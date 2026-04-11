@@ -1,0 +1,95 @@
+// FTVTI Self-Test Exit Examination System - Prisma Schema
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  password  String
+  role      Role     @default(STUDENT)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  student   Student?
+}
+
+model Student {
+  id           String       @id @default(cuid())
+  userId       String       @unique
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName     String
+  studentId    String       @unique
+  departmentId String
+  department   Department   @relation(fields: [departmentId], references: [id])
+  examAttempts ExamAttempt[]
+  comments     Comment[]
+}
+
+model Department {
+  id       String    @id @default(cuid())
+  name     String    @unique
+  students Student[]
+}
+
+model Question {
+  id            String   @id @default(cuid())
+  questionText  String
+  optionA       String
+  optionB       String
+  optionC       String
+  optionD       String
+  correctAnswer String   // "A" | "B" | "C" | "D"
+  createdBy     String
+  createdAt     DateTime @default(now())
+}
+
+model ExamAttempt {
+  id             String   @id @default(cuid())
+  studentId      String
+  student        Student  @relation(fields: [studentId], references: [id])
+  startTime      DateTime
+  endTime        DateTime?
+  score          Int      @default(0)
+  totalQuestions Int
+  answers        Json     // { questionId: selectedOption }
+  isCompleted    Boolean  @default(false)
+  createdAt      DateTime @default(now())
+}
+
+model ExamConfig {
+  id           String   @id @default(cuid())
+  password     String
+  durationMins Int      @default(60)
+  isActive     Boolean  @default(true)
+  createdBy    String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Event {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  date        DateTime
+  createdBy   String
+  createdAt   DateTime @default(now())
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  studentId String
+  student   Student  @relation(fields: [studentId], references: [id])
+  message   String
+  createdAt DateTime @default(now())
+}
+
+enum Role {
+  ADMIN
+  STUDENT
+}
