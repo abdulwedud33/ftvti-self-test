@@ -1,9 +1,8 @@
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
-type JsonBody = Record<string, unknown> | Array<unknown>;
-
 interface FetchOptions extends Omit<RequestInit, "body"> {
-  body?: BodyInit | JsonBody | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  body?: any;
 }
 
 export class ApiError extends Error {
