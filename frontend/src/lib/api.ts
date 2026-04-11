@@ -1,7 +1,7 @@
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
-interface FetchOptions extends RequestInit {
-  body?: BodyInit | null | object;
+interface FetchOptions extends Omit<RequestInit, "body"> {
+  body?: BodyInit | null | Record<string, unknown>;
 }
 
 export class ApiError extends Error {
