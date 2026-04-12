@@ -28,9 +28,18 @@ export const verifyExamPassword = async (req: Request, res: Response): Promise<v
       return;
     }
 
+    // [UPDATED] If year is NOT provided, just confirm password and return config
+    if (year === undefined) {
+      res.json({
+        message: "Password verified",
+        durationMins: config.durationMins,
+      });
+      return;
+    }
+
     // [UPDATED] Filter by year when provided
     const questions = await prisma.question.findMany({
-      where: year ? { year } : undefined,
+      where: { year },
       orderBy: { createdAt: "asc" },
       select: {
         id: true,
@@ -40,18 +49,13 @@ export const verifyExamPassword = async (req: Request, res: Response): Promise<v
         optionC: true,
         optionD: true,
         year: true,
-        // [NEW] correctAnswer IS now sent to client to enable per-question feedback
-        // after the student answers and clicks Next.
+        // correctAnswer IS now used for real-time feedback
         correctAnswer: true,
       },
     });
 
     if (questions.length === 0) {
-      res.status(400).json({
-        error: year
-          ? `No questions available for year ${year}`
-          : "No questions available for the exam",
-      });
+      res.status(400).json({ error: `No questions available for year ${year}` });
       return;
     }
 
