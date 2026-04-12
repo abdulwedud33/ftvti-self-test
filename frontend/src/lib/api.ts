@@ -66,6 +66,7 @@ export const adminApi = {
     apiFetch("/admin/questions", { method: "POST", body: data }),
   deleteQuestion: (id: string) =>
     apiFetch(`/admin/questions/${id}`, { method: "DELETE" }),
+  questionYears: () => apiFetch<number[]>("/admin/question-years"), // [NEW]
 
   events: () => apiFetch<Event[]>("/admin/events"),
   createEvent: (data: CreateEventData) =>
@@ -94,8 +95,11 @@ export const studentApi = {
 
 // Exam
 export const examApi = {
-  verifyPassword: (password: string) =>
-    apiFetch<ExamSession>("/exam/verify-password", { method: "POST", body: { password } }),
+  // [NEW] fetch distinct years available in the question bank
+  getYears: () => apiFetch<number[]>("/exam/years"),
+  // [UPDATED] now accepts optional year to filter questions
+  verifyPassword: (password: string, year?: number) =>
+    apiFetch<ExamSession>("/exam/verify-password", { method: "POST", body: { password, year } }),
   submit: (answers: Record<string, string>, startTime: string) =>
     apiFetch<ExamResult>("/exam/submit", { method: "POST", body: { answers, startTime } }),
 };
@@ -122,6 +126,7 @@ export interface Question {
   optionC: string;
   optionD: string;
   correctAnswer?: string;
+  year: number;        // [NEW]
   createdAt: string;
 }
 
@@ -132,6 +137,8 @@ export interface ExamQuestion {
   optionB: string;
   optionC: string;
   optionD: string;
+  year: number;        // [NEW]
+  correctAnswer: string; // [NEW] now included for during-exam feedback
 }
 
 export interface Event {
@@ -214,6 +221,7 @@ export interface CreateQuestionData {
   optionC: string;
   optionD: string;
   correctAnswer: "A" | "B" | "C" | "D";
+  year: number; // [NEW]
 }
 
 export interface CreateEventData {

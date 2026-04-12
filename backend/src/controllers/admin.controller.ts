@@ -71,6 +71,7 @@ export const deleteStudent = async (req: Request, res: Response): Promise<void> 
 
 // ─── Questions ────────────────────────────────────────────────────────────────
 
+// [UPDATED] Added year field (integer, 2000–2100, default 2025)
 const createQuestionSchema = z.object({
   questionText: z.string().min(5),
   optionA: z.string().min(1),
@@ -78,11 +79,15 @@ const createQuestionSchema = z.object({
   optionC: z.string().min(1),
   optionD: z.string().min(1),
   correctAnswer: z.enum(["A", "B", "C", "D"]),
+  year: z.number().int().min(2000).max(2100).default(2025), // [NEW]
 });
 
 export const getQuestions = async (_req: Request, res: Response): Promise<void> => {
   try {
-    const questions = await prisma.question.findMany({ orderBy: { createdAt: "desc" } });
+    // [UPDATED] Order by year desc, then createdAt desc for better organisation
+    const questions = await prisma.question.findMany({
+      orderBy: [{ year: "desc" }, { createdAt: "desc" }],
+    });
     res.json(questions);
   } catch {
     res.status(500).json({ error: "Failed to fetch questions" });
@@ -93,7 +98,7 @@ export const createQuestion = async (req: Request, res: Response): Promise<void>
   try {
     const data = createQuestionSchema.parse(req.body);
     const question = await prisma.question.create({
-      data: { ...data, createdBy: req.user!.userId },
+      data: { ...data, createdBy: req.user!.userId }, // year is now included from data
     });
     res.status(201).json(question);
   } catch (error) {
@@ -111,6 +116,20 @@ export const deleteQuestion = async (req: Request, res: Response): Promise<void>
     res.json({ message: "Question deleted" });
   } catch {
     res.status(500).json({ error: "Failed to delete question" });
+  }
+};
+
+// [NEW] Return all distinct years from the question bank, sorted descending
+export const getQuestionYears = async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const rows = await prisma.question.findMany({
+      select: { year: true },
+      distinct: ["year"],
+      orderBy: { year: "desc" },
+    });
+    res.json(rows.map((r) => r.year));
+  } catch {
+    res.status(500).json({ error: "Failed to fetch question years" });
   }
 };
 

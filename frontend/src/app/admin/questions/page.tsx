@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/toaster";
-import { BookOpen, Plus, Trash2, CheckCircle } from "lucide-react";
+import { BookOpen, Plus, Trash2, CheckCircle, CalendarDays } from "lucide-react";
 
 const OPTIONS = ["A", "B", "C", "D"] as const;
 
@@ -18,9 +18,15 @@ export default function QuestionsPage() {
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  // [UPDATED] Default form now includes year field defaulting to 2025
   const [form, setForm] = useState<CreateQuestionData>({
-    questionText: "", optionA: "", optionB: "", optionC: "", optionD: "", correctAnswer: "A",
+    questionText: "", optionA: "", optionB: "", optionC: "", optionD: "",
+    correctAnswer: "A",
+    year: 2025, // [NEW]
   });
+
+  // Track which year group is expanded (null = all shown)
+  const [filterYear, setFilterYear] = useState<number | "all">("all");
 
   const fetchData = async () => {
     try {
@@ -39,9 +45,9 @@ export default function QuestionsPage() {
     setSubmitting(true);
     try {
       await adminApi.createQuestion(form);
-      toast({ title: "Success", description: "Question added to question bank" });
+      toast({ title: "Success", description: `Question added to ${form.year} question bank` });
       setOpen(false);
-      setForm({ questionText: "", optionA: "", optionB: "", optionC: "", optionD: "", correctAnswer: "A" });
+      setForm({ questionText: "", optionA: "", optionB: "", optionC: "", optionD: "", correctAnswer: "A", year: 2025 });
       fetchData();
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -60,6 +66,12 @@ export default function QuestionsPage() {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     }
   };
+
+  // [NEW] Get distinct years for the filter bar
+  const distinctYears = Array.from(new Set(questions.map((q) => q.year))).sort((a, b) => b - a);
+  const visibleQuestions = filterYear === "all"
+    ? questions
+    : questions.filter((q) => q.year === filterYear);
 
   return (
     <div className="space-y-6">
@@ -80,6 +92,20 @@ export default function QuestionsPage() {
               <DialogTitle>Add New MCQ Question</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleCreate} className="space-y-4 mt-2">
+              {/* [NEW] Year field */}
+              <div className="space-y-1.5">
+                <Label>Exam Year</Label>
+                <Input
+                  type="number"
+                  min={2000}
+                  max={2100}
+                  placeholder="e.g. 2025"
+                  value={form.year}
+                  onChange={(e) => setForm({ ...form, year: parseInt(e.target.value) || 2025 })}
+                  required
+                />
+              </div>
+
               <div className="space-y-1.5">
                 <Label>Question Text</Label>
                 <textarea
@@ -137,24 +163,67 @@ export default function QuestionsPage() {
         </Dialog>
       </div>
 
+      {/* [NEW] Year filter bar */}
+      {!loading && distinctYears.length > 1 && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs text-muted-foreground flex items-center gap-1">
+            <CalendarDays className="w-3.5 h-3.5" /> Filter by year:
+          </span>
+          <button
+            onClick={() => setFilterYear("all")}
+            className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors border ${
+              filterYear === "all"
+                ? "bg-indigo-600 text-white border-indigo-600"
+                : "bg-background border-border hover:bg-secondary"
+            }`}
+          >
+            All ({questions.length})
+          </button>
+          {distinctYears.map((yr) => {
+            const count = questions.filter((q) => q.year === yr).length;
+            return (
+              <button
+                key={yr}
+                onClick={() => setFilterYear(yr)}
+                className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors border ${
+                  filterYear === yr
+                    ? "bg-indigo-600 text-white border-indigo-600"
+                    : "bg-background border-border hover:bg-secondary"
+                }`}
+              >
+                {yr} ({count})
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       <Card className="border-0 shadow-sm">
         <CardContent className="p-0">
           {loading ? (
             <div className="p-8 text-center text-muted-foreground">Loading…</div>
-          ) : questions.length === 0 ? (
+          ) : visibleQuestions.length === 0 ? (
             <div className="p-12 text-center">
               <BookOpen className="w-10 h-10 text-muted-foreground mx-auto mb-3 opacity-40" />
-              <p className="text-muted-foreground">No questions yet. Add your first question!</p>
+              <p className="text-muted-foreground">
+                {filterYear === "all" ? "No questions yet. Add your first question!" : `No questions for ${filterYear}.`}
+              </p>
             </div>
           ) : (
             <div className="divide-y">
-              {questions.map((q, idx) => (
+              {visibleQuestions.map((q, idx) => (
                 <div key={q.id} className="p-5 hover:bg-secondary/20 transition-colors">
                   <div className="flex gap-4">
                     <span className="text-muted-foreground text-sm font-mono flex-shrink-0 w-7 pt-0.5">
                       {String(idx + 1).padStart(2, "0")}.
                     </span>
                     <div className="flex-1 min-w-0">
+                      {/* [NEW] Year badge */}
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-medium border border-indigo-100">
+                          <CalendarDays className="w-3 h-3" />{q.year}
+                        </span>
+                      </div>
                       <p className="font-medium text-sm mb-3">{q.questionText}</p>
                       <div className="grid grid-cols-2 gap-2">
                         {OPTIONS.map((opt) => {

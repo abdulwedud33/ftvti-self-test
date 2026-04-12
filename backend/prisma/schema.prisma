@@ -45,9 +45,11 @@ model Question {
   optionC       String
   optionD       String
   correctAnswer String   // "A" | "B" | "C" | "D"
+  year          Int      @default(2025) // [NEW] exam year for year-based filtering
   createdBy     String
   createdAt     DateTime @default(now())
 }
+
 
 model ExamAttempt {
   id             String   @id @default(cuid())

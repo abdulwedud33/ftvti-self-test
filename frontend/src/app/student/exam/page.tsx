@@ -5,6 +5,7 @@ import { examApi, ExamSession, ExamResult } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/toaster";
 import {
   Lock,
@@ -17,37 +18,78 @@ import {
   AlertTriangle,
   RotateCcw,
   Trophy,
+  CalendarDays,
+  Loader2,
 } from "lucide-react";
 
-type Phase = "password" | "exam" | "result";
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+/** Phase flow: select year + password → exam → result */
+type Phase = "select" | "exam" | "result";
+
+/** State for per-question answer feedback shown after clicking Next */
+interface FeedbackState {
+  isCorrect: boolean;
+  correctAnswer: string;
+  selectedAnswer: string;
+  questionText: string;
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ExamPage() {
   const { toast } = useToast();
-  const [phase, setPhase] = useState<Phase>("password");
+
+  // ── Phase & navigation ───────────────────────────────────────────────────────
+  const [phase, setPhase] = useState<Phase>("select");
+
+  // ── Year selection ───────────────────────────────────────────────────────────
+  const [years, setYears] = useState<number[]>([]);
+  const [yearsLoading, setYearsLoading] = useState(true);
+  const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [password, setPassword] = useState("");
+
+  // ── Exam session ─────────────────────────────────────────────────────────────
   const [session, setSession] = useState<ExamSession | null>(null);
-  const [result, setResult] = useState<ExamResult | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [current, setCurrent] = useState(0);
   const [timeLeft, setTimeLeft] = useState(0);
   const [startTime, setStartTime] = useState("");
   const [loading, setLoading] = useState(false);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
+
+  // ── Per-question feedback ────────────────────────────────────────────────────
+  /** Set after clicking Next when question was answered; cleared after 1.6s */
+  const [feedback, setFeedback] = useState<FeedbackState | null>(null);
+  const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // ── Result ───────────────────────────────────────────────────────────────────
+  const [result, setResult] = useState<ExamResult | null>(null);
+
+  // ── Refs for timer callback ──────────────────────────────────────────────────
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const answersRef = useRef<Record<string, string>>({});
   const startTimeRef = useRef<string>("");
 
-  // Keep refs in sync for use inside timer callback
-  useEffect(() => {
-    answersRef.current = answers;
-  }, [answers]);
+  useEffect(() => { answersRef.current = answers; }, [answers]);
+  useEffect(() => { startTimeRef.current = startTime; }, [startTime]);
 
+  // ── Fetch available years on mount ───────────────────────────────────────────
   useEffect(() => {
-    startTimeRef.current = startTime;
-  }, [startTime]);
+    examApi.getYears()
+      .then((data) => {
+        setYears(data);
+        if (data.length > 0) setSelectedYear(data[0]); // default to latest year
+      })
+      .catch(() => toast({ title: "Error", description: "Failed to load exam years", variant: "destructive" }))
+      .finally(() => setYearsLoading(false));
+  }, []);
 
+  // ── Submit exam ──────────────────────────────────────────────────────────────
   const doSubmit = useCallback(async (ans: Record<string, string>, st: string) => {
     if (timerRef.current) clearInterval(timerRef.current);
+    if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
+    setFeedback(null);
     setLoading(true);
     try {
       const res = (await examApi.submit(ans, st)) as ExamResult;
@@ -61,33 +103,33 @@ export default function ExamPage() {
     }
   }, [toast]);
 
-  // Timer effect
+  // ── Countdown timer ──────────────────────────────────────────────────────────
   useEffect(() => {
     if (phase !== "exam" || !session) return;
     timerRef.current = setInterval(() => {
       setTimeLeft((t) => {
         if (t <= 1) {
           if (timerRef.current) clearInterval(timerRef.current);
-          toast({
-            title: "⏰ Time's Up!",
-            description: "Your exam has been automatically submitted.",
-          });
+          toast({ title: "⏰ Time's Up!", description: "Your exam has been automatically submitted." });
           doSubmit(answersRef.current, startTimeRef.current);
           return 0;
         }
         return t - 1;
       });
     }, 1000);
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [phase, session, doSubmit, toast]);
 
+  // ── Start exam ───────────────────────────────────────────────────────────────
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!selectedYear) {
+      toast({ title: "Select a year", description: "Please choose an exam year first.", variant: "destructive" });
+      return;
+    }
     setLoading(true);
     try {
-      const sess = (await examApi.verifyPassword(password)) as ExamSession;
+      const sess = await examApi.verifyPassword(password, selectedYear);
       setSession(sess);
       const now = new Date().toISOString();
       setStartTime(now);
@@ -105,14 +147,46 @@ export default function ExamPage() {
     }
   };
 
+  // ── Reset ────────────────────────────────────────────────────────────────────
   const handleReset = () => {
-    setPhase("password");
+    setPhase("select");
     setPassword("");
     setSession(null);
     setResult(null);
     setAnswers({});
     setCurrent(0);
     setShowSubmitConfirm(false);
+    setFeedback(null);
+    if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
+  };
+
+  // ── Per-question feedback on Next click ──────────────────────────────────────
+  /**
+   * Show green/red feedback for the current question for 1.6s, then navigate.
+   * If no answer was selected, navigate immediately without feedback.
+   */
+  const handleNext = () => {
+    if (!session) return;
+    const q = session.questions[current];
+    const selected = answers[q.id];
+
+    if (selected) {
+      const isCorrect = selected === q.correctAnswer;
+      setFeedback({
+        isCorrect,
+        correctAnswer: q.correctAnswer,
+        selectedAnswer: selected,
+        questionText: q.questionText,
+      });
+
+      feedbackTimerRef.current = setTimeout(() => {
+        setFeedback(null);
+        setCurrent((c) => c + 1);
+      }, 1600);
+    } else {
+      // No answer selected — navigate without feedback
+      setCurrent((c) => c + 1);
+    }
   };
 
   const formatTime = (s: number) => {
@@ -124,10 +198,12 @@ export default function ExamPage() {
   const answeredCount = Object.keys(answers).length;
   const totalQ = session?.questions.length ?? 0;
 
-  // ── Password Phase ──────────────────────────────────────────────────────────
-  if (phase === "password") {
+  // ════════════════════════════════════════════════════════════════════════════
+  // ── Phase: SELECT (year + password) ─────────────────────────────────────────
+  // ════════════════════════════════════════════════════════════════════════════
+  if (phase === "select") {
     return (
-      <div className="max-w-md mx-auto pt-10">
+      <div className="max-w-md mx-auto pt-10 space-y-4">
         <Card className="border-0 shadow-md">
           <CardContent className="p-8">
             <div className="text-center mb-6">
@@ -136,9 +212,38 @@ export default function ExamPage() {
               </div>
               <h1 className="text-xl font-bold">Start Exam</h1>
               <p className="text-muted-foreground text-sm mt-2">
-                Enter the exam password provided by your administrator to begin.
+                Choose the exam year and enter the password to begin.
               </p>
             </div>
+
+            {/* [NEW] Year tabs */}
+            {yearsLoading ? (
+              <div className="flex items-center justify-center gap-2 py-4 text-muted-foreground text-sm">
+                <Loader2 className="w-4 h-4 animate-spin" /> Loading years…
+              </div>
+            ) : years.length === 0 ? (
+              <div className="text-center py-4 text-muted-foreground text-sm">
+                No exam questions available yet.
+              </div>
+            ) : (
+              <div className="mb-5">
+                <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+                  <CalendarDays className="w-3.5 h-3.5" /> Select Exam Year
+                </p>
+                <Tabs
+                  value={String(selectedYear ?? years[0])}
+                  onValueChange={(v) => setSelectedYear(Number(v))}
+                >
+                  <TabsList className="w-full flex-wrap gap-1 h-auto">
+                    {years.map((yr) => (
+                      <TabsTrigger key={yr} value={String(yr)} className="flex-1 min-w-[60px]">
+                        {yr}
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+                </Tabs>
+              </div>
+            )}
 
             <form onSubmit={handleVerify} className="space-y-4">
               <Input
@@ -150,8 +255,12 @@ export default function ExamPage() {
                 required
                 autoFocus
               />
-              <Button type="submit" className="w-full h-11" disabled={loading}>
-                {loading ? "Verifying…" : "Start Exam →"}
+              <Button
+                type="submit"
+                className="w-full h-11"
+                disabled={loading || yearsLoading || years.length === 0}
+              >
+                {loading ? "Verifying…" : `Start ${selectedYear ?? ""} Exam →`}
               </Button>
             </form>
 
@@ -167,7 +276,9 @@ export default function ExamPage() {
     );
   }
 
-  // ── Result Phase ────────────────────────────────────────────────────────────
+  // ════════════════════════════════════════════════════════════════════════════
+  // ── Phase: RESULT ────────────────────────────────────────────────────────────
+  // ════════════════════════════════════════════════════════════════════════════
   if (phase === "result" && result) {
     const entries = Object.entries(result.detailedResults);
     const opts = ["A", "B", "C", "D"] as const;
@@ -175,7 +286,7 @@ export default function ExamPage() {
     return (
       <div className="max-w-2xl mx-auto space-y-6 pb-10">
         {/* Score card */}
-        <Card className={`border-0 shadow-md overflow-hidden`}>
+        <Card className="border-0 shadow-md overflow-hidden">
           <div className={`h-2 ${result.passed ? "bg-green-500" : "bg-red-400"}`} />
           <CardContent className="p-8 text-center">
             <div className={`w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-4 ${result.passed ? "bg-green-100" : "bg-red-100"}`}>
@@ -224,15 +335,17 @@ export default function ExamPage() {
           </CardContent>
         </Card>
 
-        {/* Detailed review */}
+        {/* [FEATURE 3] Detailed review — all questions with green/red indicators */}
         <div>
           <h3 className="font-semibold text-base mb-3">Detailed Review</h3>
           <div className="space-y-3">
             {entries.map(([qId, r], idx) => (
-              <Card key={qId} className="border-0 shadow-sm">
+              <Card key={qId} className={`border-0 shadow-sm overflow-hidden`}>
+                {/* Colored left border via top bar */}
+                <div className={`h-1 ${r.isCorrect ? "bg-green-500" : "bg-red-400"}`} />
                 <CardContent className="p-5">
                   <div className="flex items-start gap-3">
-                    <div className={`mt-0.5 flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center ${r.isCorrect ? "bg-green-100" : "bg-red-100"}`}>
+                    <div className={`mt-0.5 flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center ${r.isCorrect ? "bg-green-100" : "bg-red-100"}`}>
                       {r.isCorrect
                         ? <CheckCircle className="w-4 h-4 text-green-600" />
                         : <XCircle className="w-4 h-4 text-red-500" />
@@ -250,19 +363,21 @@ export default function ExamPage() {
                           const isCorrect = r.correct === opt;
                           let cls = "bg-secondary/60 text-muted-foreground";
                           if (isCorrect) cls = "bg-green-50 text-green-800 border border-green-200 font-medium";
-                          else if (isSelected && !isCorrect) cls = "bg-red-50 text-red-700 border border-red-200 line-through";
+                          else if (isSelected && !isCorrect) cls = "bg-red-50 text-red-700 border border-red-200";
                           return (
                             <div key={opt} className={`text-xs px-3 py-2 rounded-lg flex items-center gap-2 ${cls}`}>
                               <span className="font-bold w-4 flex-shrink-0">{opt}.</span>
-                              <span className="truncate">{text}</span>
+                              <span className="flex-1">{text}</span>
                               {isCorrect && <CheckCircle className="w-3 h-3 ml-auto flex-shrink-0 text-green-600" />}
+                              {isSelected && !isCorrect && <XCircle className="w-3 h-3 ml-auto flex-shrink-0 text-red-500" />}
                             </div>
                           );
                         })}
                       </div>
                       {!r.isCorrect && (
-                        <p className="text-xs text-muted-foreground mt-2">
-                          Correct answer: <span className="text-green-700 font-semibold">{r.correct}</span>
+                        <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+                          <CheckCircle className="w-3 h-3 text-green-600" />
+                          Correct answer: <span className="text-green-700 font-semibold ml-1">{r.correct}</span>
                         </p>
                       )}
                     </div>
@@ -280,13 +395,16 @@ export default function ExamPage() {
     );
   }
 
-  // ── Exam Phase ──────────────────────────────────────────────────────────────
+  // ════════════════════════════════════════════════════════════════════════════
+  // ── Phase: EXAM ──────────────────────────────────────────────────────────────
+  // ════════════════════════════════════════════════════════════════════════════
   if (phase === "exam" && session) {
     const q = session.questions[current];
     const opts = ["A", "B", "C", "D"] as const;
     const progressPct = Math.round(((current + 1) / totalQ) * 100);
-    const timerCritical = timeLeft < 300; // less than 5 mins
-    const timerWarning = timeLeft < 600; // less than 10 mins
+    const timerCritical = timeLeft < 300;
+    const timerWarning = timeLeft < 600;
+    const isLastQuestion = current === totalQ - 1;
 
     return (
       <div className="max-w-2xl mx-auto space-y-4 pb-10">
@@ -295,6 +413,10 @@ export default function ExamPage() {
           <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-semibold ${timerCritical ? "bg-red-50 text-red-600" : timerWarning ? "bg-amber-50 text-amber-700" : "bg-secondary text-foreground"}`}>
             <Clock className="w-4 h-4" />
             {formatTime(timeLeft)}
+          </div>
+
+          <div className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 font-medium border border-indigo-100">
+            <CalendarDays className="w-3.5 h-3.5" />{selectedYear}
           </div>
 
           <div className="text-sm text-muted-foreground">
@@ -315,6 +437,38 @@ export default function ExamPage() {
           />
         </div>
 
+        {/* [FEATURE 3] Per-question feedback overlay — shown for 1.6s after clicking Next */}
+        {feedback && (
+          <div className={`rounded-xl border-2 p-4 flex items-start gap-3 animate-pulse ${
+            feedback.isCorrect
+              ? "bg-green-50 border-green-400"
+              : "bg-red-50 border-red-400"
+          }`}>
+            <div className={`mt-0.5 flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${feedback.isCorrect ? "bg-green-500" : "bg-red-500"}`}>
+              {feedback.isCorrect
+                ? <CheckCircle className="w-5 h-5 text-white" />
+                : <XCircle className="w-5 h-5 text-white" />
+              }
+            </div>
+            <div>
+              <p className={`font-bold text-sm ${feedback.isCorrect ? "text-green-800" : "text-red-800"}`}>
+                {feedback.isCorrect ? "✓ Correct!" : "✗ Wrong!"}
+              </p>
+              {!feedback.isCorrect && (
+                <p className="text-xs text-red-700 mt-0.5">
+                  Correct answer: <span className="font-bold">{feedback.correctAnswer}</span>
+                  {" · "}Your answer: <span className="font-bold line-through opacity-70">{feedback.selectedAnswer}</span>
+                </p>
+              )}
+              {feedback.isCorrect && (
+                <p className="text-xs text-green-700 mt-0.5">
+                  You selected: <span className="font-bold">{feedback.selectedAnswer}</span>
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Question card */}
         <Card className="border-0 shadow-md">
           <CardContent className="p-6">
@@ -328,8 +482,13 @@ export default function ExamPage() {
                 return (
                   <button
                     key={opt}
-                    onClick={() => setAnswers((prev) => ({ ...prev, [q.id]: opt }))}
-                    className={`w-full flex items-center gap-4 p-4 rounded-xl border-2 text-left transition-all duration-150 ${
+                    onClick={() => {
+                      // Prevent changing answer while feedback is showing
+                      if (feedback) return;
+                      setAnswers((prev) => ({ ...prev, [q.id]: opt }));
+                    }}
+                    disabled={!!feedback}
+                    className={`w-full flex items-center gap-4 p-4 rounded-xl border-2 text-left transition-all duration-150 disabled:cursor-not-allowed ${
                       selected
                         ? "border-indigo-500 bg-indigo-50"
                         : "border-border hover:border-indigo-300 hover:bg-secondary/40"
@@ -351,25 +510,30 @@ export default function ExamPage() {
         <div className="flex gap-3">
           <Button
             variant="outline"
-            disabled={current === 0}
+            disabled={current === 0 || !!feedback}
             onClick={() => setCurrent((c) => c - 1)}
             className="gap-1"
           >
             <ChevronLeft className="w-4 h-4" /> Prev
           </Button>
 
-          {current < totalQ - 1 ? (
+          {!isLastQuestion ? (
             <Button
               className="flex-1 gap-1"
-              onClick={() => setCurrent((c) => c + 1)}
+              onClick={handleNext}
+              disabled={!!feedback}
             >
-              Next <ChevronRight className="w-4 h-4" />
+              {feedback ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <>Next <ChevronRight className="w-4 h-4" /></>
+              )}
             </Button>
           ) : (
             <Button
               className="flex-1 gap-2 bg-green-600 hover:bg-green-700"
               onClick={() => setShowSubmitConfirm(true)}
-              disabled={loading}
+              disabled={loading || !!feedback}
             >
               <Send className="w-4 h-4" />
               {loading ? "Submitting…" : "Submit Exam"}
@@ -418,9 +582,10 @@ export default function ExamPage() {
               return (
                 <button
                   key={q2.id}
-                  onClick={() => setCurrent(idx)}
+                  onClick={() => { if (!feedback) setCurrent(idx); }}
+                  disabled={!!feedback}
                   title={answered ? "Answered" : "Not answered"}
-                  className={`w-9 h-9 rounded-lg text-xs font-semibold transition-all border ${
+                  className={`w-9 h-9 rounded-lg text-xs font-semibold transition-all border disabled:cursor-not-allowed ${
                     isCurrent
                       ? "bg-indigo-600 text-white border-indigo-600 scale-110"
                       : answered

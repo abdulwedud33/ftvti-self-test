@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Question" ADD COLUMN     "year" INTEGER NOT NULL DEFAULT 2025;

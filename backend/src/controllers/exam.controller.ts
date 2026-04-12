@@ -2,16 +2,20 @@ import { Request, Response } from "express";
 import { z } from "zod";
 import prisma from "../utils/prisma";
 
+// [UPDATED] Added optional `year` to filter questions by exam year
 const verifyPasswordSchema = z.object({
   password: z.string().min(1),
+  year: z.number().int().optional(), // [NEW] filter questions by this year
 });
 
 /**
- * Verify exam password and return exam config + questions (without correct answers).
+ * Verify exam password and return exam config + questions for a specific year.
+ * [UPDATED] Now accepts optional `year` to filter questions.
+ * [UPDATED] Now returns `correctAnswer` per question to enable during-exam feedback.
  */
 export const verifyExamPassword = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { password } = verifyPasswordSchema.parse(req.body);
+    const { password, year } = verifyPasswordSchema.parse(req.body);
 
     const config = await prisma.examConfig.findFirst({ where: { isActive: true } });
     if (!config) {
@@ -24,7 +28,9 @@ export const verifyExamPassword = async (req: Request, res: Response): Promise<v
       return;
     }
 
+    // [UPDATED] Filter by year when provided
     const questions = await prisma.question.findMany({
+      where: year ? { year } : undefined,
       orderBy: { createdAt: "asc" },
       select: {
         id: true,
@@ -33,12 +39,19 @@ export const verifyExamPassword = async (req: Request, res: Response): Promise<v
         optionB: true,
         optionC: true,
         optionD: true,
-        // correctAnswer is NOT sent to client during exam
+        year: true,
+        // [NEW] correctAnswer IS now sent to client to enable per-question feedback
+        // after the student answers and clicks Next.
+        correctAnswer: true,
       },
     });
 
     if (questions.length === 0) {
-      res.status(400).json({ error: "No questions available for the exam" });
+      res.status(400).json({
+        error: year
+          ? `No questions available for year ${year}`
+          : "No questions available for the exam",
+      });
       return;
     }
 
@@ -155,5 +168,22 @@ export const getAttemptResult = async (req: Request, res: Response): Promise<voi
     res.json(attempt);
   } catch {
     res.status(500).json({ error: "Failed to fetch attempt" });
+  }
+};
+
+/**
+ * [NEW] Return distinct years available in the question bank, sorted descending.
+ * Used by the student exam page to render year-based tabs.
+ */
+export const getExamYears = async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const rows = await prisma.question.findMany({
+      select: { year: true },
+      distinct: ["year"],
+      orderBy: { year: "desc" },
+    });
+    res.json(rows.map((r) => r.year));
+  } catch {
+    res.status(500).json({ error: "Failed to fetch exam years" });
   }
 };

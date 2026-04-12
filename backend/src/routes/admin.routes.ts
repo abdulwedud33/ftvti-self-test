@@ -7,6 +7,7 @@ import {
   getExamConfig, updateExamConfig,
   getAllResults, getAllComments, deleteComment,
   getDepartments, getDashboardStats,
+  getQuestionYears, // [NEW]
 } from "../controllers/admin.controller";
 
 const router = Router();
@@ -25,6 +26,7 @@ router.delete("/students/:id", deleteStudent);
 
 // Questions
 router.get("/questions", getQuestions);
+router.get("/question-years", getQuestionYears); // [NEW] distinct years for admin overview
 router.post("/questions", createQuestion);
 router.delete("/questions/:id", deleteQuestion);
 
