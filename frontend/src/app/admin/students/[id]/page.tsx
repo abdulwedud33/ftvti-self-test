@@ -30,12 +30,12 @@ export default function StudentDetailPage() {
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    const studentId = params?.id;
+    const studentId = typeof params?.id === "string" ? params.id : undefined;
     if (!studentId) return;
 
-    async function load() {
+    async function load(id: string) {
       try {
-        const data = await adminApi.studentDetail(studentId);
+        const data = await adminApi.studentDetail(id);
         setProfile(data);
       } catch (error: any) {
         toast({ title: "Error", description: error?.message ?? "Failed to load student", variant: "destructive" });
@@ -44,7 +44,7 @@ export default function StudentDetailPage() {
       }
     }
 
-    load();
+    load(studentId);
   }, [params?.id, toast]);
 
   const examAttempts = profile?.examAttempts ?? [];
