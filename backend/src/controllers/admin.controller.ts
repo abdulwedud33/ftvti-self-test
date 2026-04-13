@@ -30,6 +30,37 @@ export const getStudents = async (_req: Request, res: Response): Promise<void> =
   }
 };
 
+export const getStudentDetail = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const student = await prisma.student.findUnique({
+      where: { id },
+      include: {
+        user: { select: { username: true, createdAt: true } },
+        department: true,
+        examAttempts: {
+          include: { subject: true },
+          orderBy: { createdAt: "desc" },
+        },
+      },
+    });
+
+    if (!student) {
+      res.status(404).json({ error: "Student not found" });
+      return;
+    }
+
+    const subjects = await prisma.subject.findMany({
+      where: { stream: student.stream },
+      orderBy: { name: "asc" },
+    });
+
+    res.json({ student, subjects, examAttempts: student.examAttempts });
+  } catch {
+    res.status(500).json({ error: "Failed to fetch student details" });
+  }
+};
+
 export const createStudent = async (req: Request, res: Response): Promise<void> => {
   try {
     const data = createStudentSchema.parse(req.body);

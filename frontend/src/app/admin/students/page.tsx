@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { adminApi, Student, Department, CreateStudentData, Stream } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -8,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/toaster";
-import { UserPlus, Trash2, Search, Users, FlaskConical, Globe } from "lucide-react";
+import { UserPlus, Trash2, Search, Users, FlaskConical, Globe, Eye } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 
@@ -227,7 +228,12 @@ export default function StudentsPage() {
                       <td className="px-6 py-4">
                         <span className="text-muted-foreground font-medium">{s.department.name}</span>
                       </td>
-                      <td className="px-6 py-4 text-right">
+                      <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
+                        <Link href={`/admin/students/${s.id}`}>
+                          <Button variant="outline" size="sm" className="rounded-full h-8 px-3 text-xs">
+                            <Eye className="w-3.5 h-3.5 mr-1" /> View
+                          </Button>
+                        </Link>
                         <Button 
                           variant="ghost" 
                           size="icon" 

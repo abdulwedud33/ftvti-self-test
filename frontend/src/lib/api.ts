@@ -56,6 +56,7 @@ export const adminApi = {
   
   // Students
   students: () => apiFetch<Student[]>("/admin/students"),
+  studentDetail: (id: string) => apiFetch<StudentProfile>(`/admin/students/${id}`),
   createStudent: (data: CreateStudentData) =>
     apiFetch("/admin/students", { method: "POST", body: data }),
   deleteStudent: (id: string) =>
@@ -244,6 +245,12 @@ export interface Event {
   description: string;
   date: string;
   createdAt: string;
+}
+
+export interface StudentProfile {
+  student: Student;
+  subjects: Subject[];
+  examAttempts: ExamAttempt[];
 }
 
 export interface DashboardStats {

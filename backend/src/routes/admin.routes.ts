@@ -8,6 +8,7 @@ router.use(authenticate, requireAdmin);
 
 // Students
 router.get("/students", adminController.getStudents);
+router.get("/students/:id", adminController.getStudentDetail);
 router.post("/students", adminController.createStudent);
 router.delete("/students/:id", adminController.deleteStudent);
 
