@@ -94,12 +94,12 @@ export const adminApi = {
   deleteComment: (id: string) =>
     apiFetch(`/admin/comments/${id}`, { method: "DELETE" }),
 
-  // Events (Announcements)
-  events: () => apiFetch<Event[]>("/admin/announcements"),
-  createEvent: (data: { title: string; content: string }) =>
-    apiFetch("/admin/announcements", { method: "POST", body: data }),
+  // Events
+  events: () => apiFetch<Event[]>("/admin/events"),
+  createEvent: (data: CreateEventData) =>
+    apiFetch("/admin/events", { method: "POST", body: data }),
   deleteEvent: (id: string) =>
-    apiFetch(`/admin/announcements/${id}`, { method: "DELETE" }),
+    apiFetch(`/admin/events/${id}`, { method: "DELETE" }),
 };
 
 export const instructorApi = {
@@ -241,7 +241,8 @@ export interface Comment {
 export interface Event {
   id: string;
   title: string;
-  content: string;
+  description: string;
+  date: string;
   createdAt: string;
 }
 
@@ -278,6 +279,12 @@ export interface CreateInstructorData {
   fullName: string;
   stream: Stream;
   subjectId: string;
+}
+
+export interface CreateEventData {
+  title: string;
+  description: string;
+  date: string;
 }
 
 export interface CreateQuestionData {

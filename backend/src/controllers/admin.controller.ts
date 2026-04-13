@@ -22,7 +22,7 @@ export const getStudents = async (_req: Request, res: Response): Promise<void> =
         user: { select: { username: true, role: true, createdAt: true } },
         department: true,
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: { user: { createdAt: "desc" } },
     });
     res.json(students);
   } catch {
