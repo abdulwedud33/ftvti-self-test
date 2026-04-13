@@ -2,20 +2,24 @@ import { Request, Response } from "express";
 import { z } from "zod";
 import prisma from "../utils/prisma";
 
-// [UPDATED] Added optional `year` to filter questions by exam year
 const verifyPasswordSchema = z.object({
   password: z.string().min(1),
-  year: z.number().int().optional(), // [NEW] filter questions by this year
+  subjectId: z.string().min(1),
+  year: z.number().int().optional(),
 });
 
-/**
- * Verify exam password and return exam config + questions for a specific year.
- * [UPDATED] Now accepts optional `year` to filter questions.
- * [UPDATED] Now returns `correctAnswer` per question to enable during-exam feedback.
- */
 export const verifyExamPassword = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { password, year } = verifyPasswordSchema.parse(req.body);
+    const { password, subjectId, year } = verifyPasswordSchema.parse(req.body);
+
+    const student = await prisma.student.findUnique({
+      where: { userId: req.user!.userId },
+    });
+
+    if (!student) {
+      res.status(404).json({ error: "Student profile not found" });
+      return;
+    }
 
     const config = await prisma.examConfig.findFirst({ where: { isActive: true } });
     if (!config) {
@@ -23,12 +27,13 @@ export const verifyExamPassword = async (req: Request, res: Response): Promise<v
       return;
     }
 
-    if (config.password !== password) {
-      res.status(401).json({ error: "Incorrect exam password" });
+    // Check password based on student stream
+    const correctPassword = student.stream === "NATURAL_SCIENCE" ? config.naturalPassword : config.socialPassword;
+    if (correctPassword !== password) {
+      res.status(401).json({ error: "Incorrect exam password for your stream" });
       return;
     }
 
-    // [UPDATED] If year is NOT provided, just confirm password and return config
     if (year === undefined) {
       res.json({
         message: "Password verified",
@@ -37,9 +42,8 @@ export const verifyExamPassword = async (req: Request, res: Response): Promise<v
       return;
     }
 
-    // [UPDATED] Filter by year when provided
     const questions = await prisma.question.findMany({
-      where: { year },
+      where: { subjectId, year },
       orderBy: { createdAt: "asc" },
       select: {
         id: true,
@@ -49,13 +53,12 @@ export const verifyExamPassword = async (req: Request, res: Response): Promise<v
         optionC: true,
         optionD: true,
         year: true,
-        // correctAnswer IS now used for real-time feedback
         correctAnswer: true,
       },
     });
 
     if (questions.length === 0) {
-      res.status(400).json({ error: `No questions available for year ${year}` });
+      res.status(400).json({ error: `No questions available for this subject and year` });
       return;
     }
 
@@ -76,14 +79,13 @@ export const verifyExamPassword = async (req: Request, res: Response): Promise<v
 const submitExamSchema = z.object({
   answers: z.record(z.string(), z.enum(["A", "B", "C", "D"])),
   startTime: z.string().datetime(),
+  subjectId: z.string().optional(),
+  year: z.number().optional(),
 });
 
-/**
- * Submit exam answers, calculate score, save attempt.
- */
 export const submitExam = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { answers, startTime } = submitExamSchema.parse(req.body);
+    const { answers, startTime, subjectId, year } = submitExamSchema.parse(req.body);
 
     const student = await prisma.student.findUnique({ where: { userId: req.user!.userId } });
     if (!student) {
@@ -91,22 +93,13 @@ export const submitExam = async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
-    // Fetch all questions with correct answers for scoring
     const questionIds = Object.keys(answers);
     const questions = await prisma.question.findMany({
       where: { id: { in: questionIds } },
-      select: { id: true, correctAnswer: true, questionText: true, optionA: true, optionB: true, optionC: true, optionD: true },
     });
 
-    // Calculate score
     let score = 0;
-    const detailedResults: Record<string, {
-      selected: string;
-      correct: string;
-      isCorrect: boolean;
-      questionText: string;
-      optionA: string; optionB: string; optionC: string; optionD: string;
-    }> = {};
+    const detailedResults: Record<string, any> = {};
 
     for (const q of questions) {
       const selected = answers[q.id];
@@ -117,17 +110,14 @@ export const submitExam = async (req: Request, res: Response): Promise<void> => 
         correct: q.correctAnswer,
         isCorrect,
         questionText: q.questionText,
-        optionA: q.optionA,
-        optionB: q.optionB,
-        optionC: q.optionC,
-        optionD: q.optionD,
       };
     }
 
-    // Save attempt
     const attempt = await prisma.examAttempt.create({
       data: {
         studentId: student.id,
+        subjectId,
+        year,
         startTime: new Date(startTime),
         endTime: new Date(),
         score,
@@ -141,8 +131,8 @@ export const submitExam = async (req: Request, res: Response): Promise<void> => 
       attemptId: attempt.id,
       score,
       totalQuestions: questions.length,
-      percentage: Math.round((score / questions.length) * 100),
-      passed: score / questions.length >= 0.5,
+      percentage: Math.round((score / (questions.length || 1)) * 100),
+      passed: (score / (questions.length || 1)) >= 0.5,
       detailedResults,
       endTime: attempt.endTime,
     });
@@ -151,14 +141,10 @@ export const submitExam = async (req: Request, res: Response): Promise<void> => 
       res.status(400).json({ error: error.errors[0].message });
       return;
     }
-    console.error("Submit exam error:", error);
     res.status(500).json({ error: "Failed to submit exam" });
   }
 };
 
-/**
- * Get a specific exam attempt result (for review).
- */
 export const getAttemptResult = async (req: Request, res: Response): Promise<void> => {
   try {
     const student = await prisma.student.findUnique({ where: { userId: req.user!.userId } });
@@ -166,6 +152,7 @@ export const getAttemptResult = async (req: Request, res: Response): Promise<voi
 
     const attempt = await prisma.examAttempt.findFirst({
       where: { id: req.params.id, studentId: student.id },
+      include: { subject: true },
     });
     if (!attempt) { res.status(404).json({ error: "Attempt not found" }); return; }
 
@@ -175,13 +162,16 @@ export const getAttemptResult = async (req: Request, res: Response): Promise<voi
   }
 };
 
-/**
- * [NEW] Return distinct years available in the question bank, sorted descending.
- * Used by the student exam page to render year-based tabs.
- */
-export const getExamYears = async (_req: Request, res: Response): Promise<void> => {
+export const getExamYears = async (req: Request, res: Response): Promise<void> => {
   try {
+    const { subjectId } = req.query;
+    if (!subjectId) {
+       res.status(400).json({ error: "Subject ID is required" });
+       return;
+    }
+
     const rows = await prisma.question.findMany({
+      where: { subjectId: String(subjectId) },
       select: { year: true },
       distinct: ["year"],
       orderBy: { year: "desc" },
@@ -189,5 +179,25 @@ export const getExamYears = async (_req: Request, res: Response): Promise<void> 
     res.json(rows.map((r) => r.year));
   } catch {
     res.status(500).json({ error: "Failed to fetch exam years" });
+  }
+};
+
+export const getSubjectsByStream = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const student = await prisma.student.findUnique({
+      where: { userId: req.user!.userId },
+    });
+    if (!student) {
+      res.status(404).json({ error: "Student not found" });
+      return;
+    }
+
+    const subjects = await prisma.subject.findMany({
+      where: { stream: student.stream },
+      orderBy: { name: "asc" },
+    });
+    res.json(subjects);
+  } catch {
+    res.status(500).json({ error: "Failed to fetch subjects" });
   }
 };

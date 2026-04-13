@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/hooks/use-auth";
@@ -8,12 +8,14 @@ import { Button } from "@/components/ui/button";
 import {
   LayoutDashboard, Users, BookOpen, Calendar, BarChart2,
   MessageSquare, Settings, LogOut, GraduationCap, Menu, X,
+  UserCheck, Bookmark
 } from "lucide-react";
-import { useState } from "react";
-import { cn } from "@/components/ui/misc";
+import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
+  { href: "/admin/subjects", label: "Subjects", icon: Bookmark },
+  { href: "/admin/instructors", label: "Instructors", icon: UserCheck },
   { href: "/admin/students", label: "Students", icon: Users },
   { href: "/admin/questions", label: "Questions", icon: BookOpen },
   { href: "/admin/events", label: "Events", icon: Calendar },
@@ -58,17 +60,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* Sidebar */}
       <aside className={cn(
         "fixed top-0 left-0 h-full w-64 bg-white border-r flex flex-col z-30 transition-transform duration-200",
-        "lg:translate-x-0 lg:static lg:z-auto",
+        "lg:translate-x-0 lg:static lg:z-auto shadow-sm",
         sidebarOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         {/* Logo */}
-        <div className="p-5 border-b flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
-            <GraduationCap className="w-5 h-5 text-white" />
+        <div className="p-6 border-b flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center flex-shrink-0 shadow-lg shadow-primary/20">
+            <GraduationCap className="w-6 h-6 text-white" />
           </div>
           <div>
-            <p className="font-bold text-sm leading-none">FTVTI Admin</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Exam System</p>
+            <p className="font-extrabold text-sm leading-none tracking-tight">FTVTI Admin</p>
+            <p className="text-[10px] uppercase font-bold text-muted-foreground mt-1 tracking-widest">Self-Test System</p>
           </div>
           <button className="ml-auto lg:hidden" onClick={() => setSidebarOpen(false)}>
             <X className="w-4 h-4" />
@@ -76,17 +78,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+        <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto">
           {navItems.map(({ href, label, icon: Icon, exact }) => (
             <Link
               key={href}
               href={href}
               onClick={() => setSidebarOpen(false)}
               className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                "flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200",
                 isActive(href, exact)
-                  ? "bg-primary text-white"
-                  : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                  ? "bg-primary text-white shadow-md shadow-primary/20 translate-x-1"
+                  : "text-muted-foreground hover:bg-secondary hover:text-foreground hover:translate-x-1"
               )}
             >
               <Icon className="w-4 h-4 flex-shrink-0" />
@@ -96,39 +98,41 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </nav>
 
         {/* User section */}
-        <div className="p-3 border-t">
-          <div className="flex items-center gap-3 px-3 py-2 mb-1">
-            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-sm font-bold">
+        <div className="p-4 border-t bg-muted/20">
+          <div className="flex items-center gap-3 px-3 py-2 mb-2">
+            <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary text-sm font-extrabold border border-primary/20">
               {user.username[0].toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{user.username}</p>
-              <p className="text-xs text-muted-foreground">Administrator</p>
+              <p className="text-sm font-bold truncate">{user.username}</p>
+              <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">Super Admin</p>
             </div>
           </div>
           <Button
             variant="ghost"
-            className="w-full justify-start gap-3 text-red-600 hover:bg-red-50 hover:text-red-700"
+            className="w-full justify-start gap-3 text-red-500 hover:bg-red-50 hover:text-red-600 rounded-xl font-bold text-xs"
             onClick={logout}
           >
             <LogOut className="w-4 h-4" />
-            Sign Out
+            SIGN OUT
           </Button>
         </div>
       </aside>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
         {/* Top bar (mobile) */}
-        <header className="lg:hidden sticky top-0 bg-white border-b px-4 py-3 flex items-center gap-3 z-10">
+        <header className="lg:hidden sticky top-0 bg-white/80 backdrop-blur-md border-b px-4 py-3 flex items-center gap-3 z-10">
           <button onClick={() => setSidebarOpen(true)}>
             <Menu className="w-5 h-5" />
           </button>
-          <span className="font-semibold text-sm">FTVTI Admin</span>
+          <span className="font-bold text-sm tracking-tight">FTVTI Admin Panel</span>
         </header>
 
-        <main className="flex-1 p-4 lg:p-8 overflow-auto">
-          {children}
+        <main className="flex-1 overflow-auto bg-slate-50/50">
+          <div className="max-w-[1600px] mx-auto min-h-full">
+            {children}
+          </div>
         </main>
       </div>
     </div>

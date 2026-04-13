@@ -1,49 +1,50 @@
 import { Router } from "express";
 import { authenticate, requireAdmin } from "../middleware/auth.middleware";
-import {
-  getStudents, createStudent, deleteStudent,
-  getQuestions, createQuestion, deleteQuestion,
-  getEvents, createEvent, deleteEvent,
-  getExamConfig, updateExamConfig,
-  getAllResults, getAllComments, deleteComment,
-  getDepartments, getDashboardStats,
-  getQuestionYears, // [NEW]
-} from "../controllers/admin.controller";
+import * as adminController from "../controllers/admin.controller";
 
 const router = Router();
+
 router.use(authenticate, requireAdmin);
 
-// Dashboard
-router.get("/stats", getDashboardStats);
+// Students
+router.get("/students", adminController.getStudents);
+router.post("/students", adminController.createStudent);
+router.delete("/students/:id", adminController.deleteStudent);
+
+// Instructors
+router.get("/instructors", adminController.getInstructors);
+router.post("/instructors", adminController.createInstructor);
+router.delete("/instructors/:id", adminController.deleteInstructor);
+
+// Subjects
+router.get("/subjects", adminController.getSubjects);
+router.post("/subjects", adminController.createSubject);
+router.delete("/subjects/:id", adminController.deleteSubject);
 
 // Departments
-router.get("/departments", getDepartments);
-
-// Students
-router.get("/students", getStudents);
-router.post("/students", createStudent);
-router.delete("/students/:id", deleteStudent);
+router.get("/departments", adminController.getDepartments);
 
 // Questions
-router.get("/questions", getQuestions);
-router.get("/question-years", getQuestionYears); // [NEW] distinct years for admin overview
-router.post("/questions", createQuestion);
-router.delete("/questions/:id", deleteQuestion);
+router.get("/questions", adminController.getQuestions);
+router.post("/questions", adminController.createQuestion);
+router.delete("/questions/:id", adminController.deleteQuestion);
+router.get("/questions/years", adminController.getQuestionYears);
 
 // Events
-router.get("/events", getEvents);
-router.post("/events", createEvent);
-router.delete("/events/:id", deleteEvent);
+router.get("/events", adminController.getEvents);
+router.post("/events", adminController.createEvent);
+router.delete("/events/:id", adminController.deleteEvent);
 
 // Exam Config
-router.get("/exam-config", getExamConfig);
-router.put("/exam-config", updateExamConfig);
+router.get("/exam-config", adminController.getExamConfig);
+router.put("/exam-config", adminController.updateExamConfig);
 
-// Results
-router.get("/results", getAllResults);
+// Results & Comments
+router.get("/results", adminController.getAllResults);
+router.get("/comments", adminController.getAllComments);
+router.delete("/comments/:id", adminController.deleteComment);
 
-// Comments/Feedback
-router.get("/comments", getAllComments);
-router.delete("/comments/:id", deleteComment);
+// Stats
+router.get("/dashboard-stats", adminController.getDashboardStats);
 
 export default router;

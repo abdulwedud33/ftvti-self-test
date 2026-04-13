@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { adminApi, ExamAttempt } from "@/lib/api";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/toaster";
-import { BarChart2, Trophy, XCircle } from "lucide-react";
+import { BarChart2, Trophy, XCircle, FlaskConical, Globe, BookOpen, CalendarDays } from "lucide-react";
 import dayjs from "dayjs";
+import { Badge } from "@/components/ui/badge";
 
 export default function ResultsPage() {
   const { toast } = useToast();
@@ -18,99 +19,116 @@ export default function ResultsPage() {
     ).finally(() => setLoading(false));
   }, []);
 
-  const avgPct = results.length
-    ? Math.round(results.reduce((acc, r) => acc + (r.score / r.totalQuestions) * 100, 0) / results.length)
-    : 0;
+  const totalAttempts = results.length;
   const passCount = results.filter((r) => r.score / r.totalQuestions >= 0.5).length;
+  const avgPct = totalAttempts
+    ? Math.round(results.reduce((acc, r) => acc + (r.score / r.totalQuestions) * 100, 0) / totalAttempts)
+    : 0;
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <BarChart2 className="w-6 h-6" /> Exam Results
+    <div className="space-y-8 p-6">
+      <div className="flex flex-col gap-1">
+        <h1 className="text-3xl font-extrabold tracking-tight flex items-center gap-3">
+          <BarChart2 className="w-8 h-8 text-primary" /> Examination Analytics
         </h1>
-        <p className="text-muted-foreground text-sm">{results.length} completed exam attempts</p>
+        <p className="text-muted-foreground font-medium">Cross-stream student performance reporting</p>
       </div>
 
-      {/* Summary stats */}
-      {results.length > 0 && (
-        <div className="grid grid-cols-3 gap-4">
-          <Card className="border-0 shadow-sm">
-            <CardContent className="p-4 text-center">
-              <p className="text-2xl font-bold">{results.length}</p>
-              <p className="text-xs text-muted-foreground mt-1">Total Attempts</p>
-            </CardContent>
-          </Card>
-          <Card className="border-0 shadow-sm">
-            <CardContent className="p-4 text-center">
-              <p className="text-2xl font-bold text-green-600">{passCount}</p>
-              <p className="text-xs text-muted-foreground mt-1">Passed (≥50%)</p>
-            </CardContent>
-          </Card>
-          <Card className="border-0 shadow-sm">
-            <CardContent className="p-4 text-center">
-              <p className="text-2xl font-bold text-blue-600">{avgPct}%</p>
-              <p className="text-xs text-muted-foreground mt-1">Average Score</p>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card className="border-0 shadow-lg shadow-primary/5 bg-white/80 backdrop-blur-sm rounded-3xl">
+          <CardContent className="p-8 text-center space-y-2">
+            <div className="text-4xl font-black text-slate-800 tracking-tighter">{totalAttempts}</div>
+            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Total Submissions</p>
+          </CardContent>
+        </Card>
+        <Card className="border-0 shadow-lg shadow-emerald-500/5 bg-white/80 backdrop-blur-sm rounded-3xl">
+          <CardContent className="p-8 text-center space-y-2">
+            <div className="text-4xl font-black text-emerald-600 tracking-tighter">{passCount}</div>
+            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Successful Passes</p>
+          </CardContent>
+        </Card>
+        <Card className="border-0 shadow-lg shadow-blue-500/5 bg-white/80 backdrop-blur-sm rounded-3xl">
+          <CardContent className="p-8 text-center space-y-2">
+            <div className="text-4xl font-black text-blue-600 tracking-tighter">{avgPct}%</div>
+            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Class Average</p>
+          </CardContent>
+        </Card>
+      </div>
 
-      <Card className="border-0 shadow-sm">
+      <Card className="border-0 shadow-xl shadow-slate-200/50 rounded-[2.5rem] overflow-hidden bg-white">
+        <CardHeader className="border-b bg-slate-50/50 px-8 py-6">
+           <CardTitle className="text-base font-bold text-slate-700 flex items-center gap-2">
+              <BarChart2 className="w-4 h-4" /> Global Performance Logs
+           </CardTitle>
+        </CardHeader>
         <CardContent className="p-0">
           {loading ? (
-            <div className="p-8 text-center text-muted-foreground">Loading…</div>
+            <div className="p-20 text-center animate-pulse text-muted-foreground font-medium tracking-widest uppercase text-xs">Crunching data logs…</div>
           ) : results.length === 0 ? (
-            <div className="p-12 text-center">
-              <BarChart2 className="w-10 h-10 text-muted-foreground mx-auto mb-3 opacity-40" />
-              <p className="text-muted-foreground">No exam results yet</p>
+            <div className="p-20 text-center">
+              <BarChart2 className="w-16 h-16 text-muted-foreground/20 mx-auto mb-6" />
+              <p className="text-muted-foreground font-bold italic">No examination records found in history.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="border-b">
-                  <tr className="text-left text-muted-foreground">
-                    <th className="px-5 py-3 font-medium">Student</th>
-                    <th className="px-5 py-3 font-medium">Department</th>
-                    <th className="px-5 py-3 font-medium">Score</th>
-                    <th className="px-5 py-3 font-medium">Result</th>
-                    <th className="px-5 py-3 font-medium">Duration</th>
-                    <th className="px-5 py-3 font-medium">Date</th>
+                <thead>
+                  <tr className="text-left text-slate-400 border-b bg-slate-50/30">
+                    <th className="px-8 py-5 font-black text-[10px] uppercase tracking-widest">Student & Dept</th>
+                    <th className="px-8 py-5 font-black text-[10px] uppercase tracking-widest">Subject & Stream</th>
+                    <th className="px-8 py-5 font-black text-[10px] uppercase tracking-widest">Performance</th>
+                    <th className="px-8 py-5 font-black text-[10px] uppercase tracking-widest">Date</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y">
+                <tbody className="divide-y divide-slate-100">
                   {results.map((r) => {
                     const pct = Math.round((r.score / r.totalQuestions) * 100);
                     const passed = pct >= 50;
-                    const duration = r.endTime
-                      ? `${dayjs(r.endTime).diff(dayjs(r.startTime), "minute")}m`
-                      : "—";
                     return (
-                      <tr key={r.id} className="hover:bg-secondary/30">
-                        <td className="px-5 py-3.5">
-                          <div>
-                            <p className="font-medium">{r.student?.fullName ?? "—"}</p>
-                            <p className="text-xs text-muted-foreground font-mono">{r.student?.studentId}</p>
-                          </div>
+                      <tr key={r.id} className="hover:bg-slate-50/50 transition-all group">
+                        <td className="px-8 py-6">
+                           <div className="flex items-center gap-4">
+                              <div className="w-10 h-10 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 font-black text-xs">
+                                 {r.student?.fullName[0]}
+                              </div>
+                              <div>
+                                 <p className="font-bold text-slate-800">{r.student?.fullName || "Student Removed"}</p>
+                                 <p className="text-[10px] font-bold text-slate-400 uppercase">{r.student?.department?.name || "No Dept"}</p>
+                              </div>
+                           </div>
                         </td>
-                        <td className="px-5 py-3.5 text-muted-foreground text-xs">{r.student?.department?.name}</td>
-                        <td className="px-5 py-3.5">
-                          <div>
-                            <span className="font-semibold">{r.score}/{r.totalQuestions}</span>
-                            <span className="text-muted-foreground ml-1 text-xs">({pct}%)</span>
-                          </div>
-                          <div className="w-24 h-1.5 bg-secondary rounded-full mt-1.5 overflow-hidden">
-                            <div className={`h-full rounded-full ${passed ? "bg-green-500" : "bg-red-400"}`} style={{ width: `${pct}%` }} />
-                          </div>
+                        <td className="px-8 py-6">
+                           <div className="space-y-2">
+                              <div className="flex items-center gap-1.5 font-bold text-slate-700">
+                                 <BookOpen className="w-3.5 h-3.5 text-primary" /> {r.subject?.name || "General"}
+                                 <Badge variant="outline" className="text-[9px] h-4 py-0 font-black tracking-tighter border-slate-200">
+                                    <CalendarDays className="w-2.5 h-2.5 mr-1" /> {r.year || "N/A"}
+                                 </Badge>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                 {r.subject?.stream === "NATURAL_SCIENCE" ? (
+                                    <div className="flex items-center gap-1 text-[10px] font-black text-emerald-600 uppercase tracking-widest"><FlaskConical className="w-3 h-3" /> Natural</div>
+                                 ) : (
+                                    <div className="flex items-center gap-1 text-[10px] font-black text-blue-600 uppercase tracking-widest"><Globe className="w-3 h-3" /> Social</div>
+                                 )}
+                              </div>
+                           </div>
                         </td>
-                        <td className="px-5 py-3.5">
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${passed ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>
-                            {passed ? <Trophy className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
-                            {passed ? "Passed" : "Failed"}
-                          </span>
+                        <td className="px-8 py-6">
+                           <div className="flex items-center justify-between gap-4 mb-2">
+                              <span className="font-extrabold text-slate-800 text-lg">{r.score}/{r.totalQuestions}</span>
+                              <span className={`px-3 py-0.5 rounded-full text-[10px] font-black uppercase tracking-tighter ${passed ? "bg-emerald-500 text-white" : "bg-red-500 text-white"}`}>
+                                 {passed ? "Qualified" : "Failed"}
+                              </span>
+                           </div>
+                           <div className="w-40 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                              <div className={`h-full rounded-full transition-all duration-1000 ${passed ? "bg-emerald-500" : "bg-red-500"}`} style={{ width: `${pct}%` }} />
+                           </div>
                         </td>
-                        <td className="px-5 py-3.5 text-muted-foreground">{duration}</td>
-                        <td className="px-5 py-3.5 text-muted-foreground text-xs">{dayjs(r.createdAt).format("MMM D, YYYY HH:mm")}</td>
+                        <td className="px-8 py-6">
+                           <p className="font-bold text-slate-800">{dayjs(r.createdAt).format("MMM DD")}</p>
+                           <p className="text-[10px] font-bold text-slate-400">{dayjs(r.createdAt).format("HH:mm A")}</p>
+                        </td>
                       </tr>
                     );
                   })}

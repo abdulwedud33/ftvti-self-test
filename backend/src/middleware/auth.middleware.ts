@@ -33,6 +33,14 @@ export const requireAdmin = (req: Request, res: Response, next: NextFunction): v
   next();
 };
 
+export const requireInstructor = (req: Request, res: Response, next: NextFunction): void => {
+  if (req.user?.role !== "INSTRUCTOR" && req.user?.role !== "ADMIN") {
+    res.status(403).json({ error: "Instructor access required" });
+    return;
+  }
+  next();
+};
+
 export const requireStudent = (req: Request, res: Response, next: NextFunction): void => {
   if (req.user?.role !== "STUDENT") {
     res.status(403).json({ error: "Student access required" });

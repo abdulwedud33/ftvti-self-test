@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { examApi, ExamSession, ExamResult } from "@/lib/api";
+import { examApi, ExamSession, ExamResult, Subject } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/toaster";
@@ -22,31 +23,28 @@ import {
   Loader2,
   Check,
   X,
+  BookOpen,
+  ArrowRight,
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-/** Phase flow: password entry -> selecting year -> exam session -> results */
-type Phase = "password" | "select-year" | "exam" | "result";
-
-// ─── Page ─────────────────────────────────────────────────────────────────────
+type Phase = "select-subject" | "select-year" | "password" | "exam" | "result";
 
 export default function ExamPage() {
   const { toast } = useToast();
 
-  // ── Phase & Navigation ──────────────────────────────────────────────────────
-  const [phase, setPhase] = useState<Phase>("password");
+  const [phase, setPhase] = useState<Phase>("select-subject");
 
-  // ── Auth & Year Selection ───────────────────────────────────────────────────
-  const [password, setPassword] = useState("");
+  // Selection state
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
   const [years, setYears] = useState<number[]>([]);
-  const [yearsLoading, setYearsLoading] = useState(false);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
+  const [password, setPassword] = useState("");
 
-  // ── Exam Session ────────────────────────────────────────────────────────────
+  // Session state
   const [session, setSession] = useState<ExamSession | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
-  /** Tracks which questions have "revealed" their correctness feedback */
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
   const [current, setCurrent] = useState(0);
   const [timeLeft, setTimeLeft] = useState(0);
@@ -54,10 +52,10 @@ export default function ExamPage() {
   const [loading, setLoading] = useState(false);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
 
-  // ── Results ──────────────────────────────────────────────────────────────────
+  // Results
   const [result, setResult] = useState<ExamResult | null>(null);
 
-  // ── Timer Refs ──────────────────────────────────────────────────────────────
+  // Refs
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const answersRef = useRef<Record<string, string>>({});
   const startTimeRef = useRef<string>("");
@@ -65,85 +63,77 @@ export default function ExamPage() {
   useEffect(() => { answersRef.current = answers; }, [answers]);
   useEffect(() => { startTimeRef.current = startTime; }, [startTime]);
 
-  // ── Actions: Password Verification ─────────────────────────────────────────
+  // Actions
+  useEffect(() => {
+    if (phase === "select-subject") {
+      setLoading(true);
+      examApi.getSubjects()
+        .then(setSubjects)
+        .catch(() => toast({ title: "Error", description: "Failed to load subjects", variant: "destructive" }))
+        .finally(() => setLoading(false));
+    }
+  }, [phase, toast]);
+
+  const handleSubjectSelect = (sub: Subject) => {
+    setSelectedSubject(sub);
+    setLoading(true);
+    examApi.getYears(sub.id)
+      .then((yrs) => {
+        setYears(yrs);
+        if (yrs.length > 0) setSelectedYear(yrs[0]);
+        setPhase("select-year");
+      })
+      .catch(() => toast({ title: "Error", description: "Failed to load years", variant: "destructive" }))
+      .finally(() => setLoading(false));
+  };
+
+  const handleYearSelect = () => {
+    if (selectedYear) setPhase("password");
+  };
+
   const handleVerifyPassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!selectedSubject || !selectedYear) return;
     setLoading(true);
     try {
-      // Step 1: Just verify password and get config
-      const res = await examApi.verifyPassword(password);
-      // If no error, we move to selection phase
-      setPhase("select-year");
-      fetchAvailableYears();
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Verification failed";
-      toast({ title: "Error", description: msg, variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchAvailableYears = async () => {
-    setYearsLoading(true);
-    try {
-      const data = await examApi.getYears();
-      setYears(data);
-      if (data.length > 0) setSelectedYear(data[0]);
-    } catch {
-      toast({ title: "Error", description: "Failed to load exam years", variant: "destructive" });
-    } finally {
-      setYearsLoading(false);
-    }
-  };
-
-  // ── ACTIONS: Start Session for Year ────────────────────────────────────────
-  const handleStartExam = async () => {
-    if (!selectedYear) return;
-    setLoading(true);
-    try {
-      const sess = await examApi.verifyPassword(password, selectedYear);
+      const sess = await examApi.verifyPassword(password, selectedSubject.id, selectedYear);
       setSession(sess);
       const now = new Date().toISOString();
       setStartTime(now);
       startTimeRef.current = now;
       setTimeLeft(sess.durationMins * 60);
       setAnswers({});
-      answersRef.current = {};
       setRevealed({});
       setCurrent(0);
       setPhase("exam");
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Error starting exam";
-      toast({ title: "Error", description: msg, variant: "destructive" });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
   };
 
-  // ── ACTIONS: Submit ────────────────────────────────────────────────────────
   const doSubmit = useCallback(async (ans: Record<string, string>, st: string) => {
     if (timerRef.current) clearInterval(timerRef.current);
+    if (!selectedSubject || !selectedYear) return;
     setLoading(true);
     try {
-      const res = (await examApi.submit(ans, st)) as ExamResult;
+      const res = await examApi.submit(ans, st, selectedSubject.id, selectedYear);
       setResult(res);
       setPhase("result");
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Submission failed";
-      toast({ title: "Submission Error", description: msg, variant: "destructive" });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [selectedSubject, selectedYear, toast]);
 
-  // ── Timer Effect ────────────────────────────────────────────────────────────
   useEffect(() => {
     if (phase !== "exam" || !session) return;
     timerRef.current = setInterval(() => {
       setTimeLeft((t) => {
         if (t <= 1) {
           if (timerRef.current) clearInterval(timerRef.current);
-          toast({ title: "⏰ Time's Up!", description: "Your exam has been automatically submitted." });
           doSubmit(answersRef.current, startTimeRef.current);
           return 0;
         }
@@ -151,27 +141,21 @@ export default function ExamPage() {
       });
     }, 1000);
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [phase, session, doSubmit, toast]);
+  }, [phase, session, doSubmit]);
 
-  // ── ACTIONS: Answer Selection ──────────────────────────────────────────────
   const handleSelectAnswer = (qId: string, opt: string) => {
-    // If already revealed, don't allow change
     if (revealed[qId]) return;
-
     setAnswers((prev) => ({ ...prev, [qId]: opt }));
-    // Immediately reveal truth
     setRevealed((prev) => ({ ...prev, [qId]: true }));
   };
 
   const handleReset = () => {
-    setPhase("password");
+    setPhase("select-subject");
+    setSelectedSubject(null);
+    setSelectedYear(null);
     setPassword("");
     setSession(null);
     setResult(null);
-    setAnswers({});
-    setRevealed({});
-    setCurrent(0);
-    setShowSubmitConfirm(false);
   };
 
   const formatTime = (s: number) => {
@@ -180,48 +164,111 @@ export default function ExamPage() {
     return `${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
   };
 
-  const answeredCount = Object.keys(answers).length;
-  const totalQ = session?.questions.length ?? 0;
-
   // ════════════════════════════════════════════════════════════════════════════
-  // ── Phase: PASSWORD (General) ───────────────────────────────────────────────
+  // ── Phase: SELECT SUBJECT ────────────────────────────────────────────────────
   // ════════════════════════════════════════════════════════════════════════════
-  if (phase === "password") {
+  if (phase === "select-subject") {
     return (
-      <div className="max-w-md mx-auto pt-10">
-        <Card className="border-0 shadow-xl bg-card">
-          <CardContent className="p-8">
-            <div className="text-center mb-6">
-              <div className="w-20 h-20 rounded-3xl bg-primary/10 flex items-center justify-center mx-auto mb-5">
-                <Lock className="w-10 h-10 text-primary" />
-              </div>
-              <h1 className="text-2xl font-bold tracking-tight">Exam Access</h1>
-              <p className="text-muted-foreground text-sm mt-2">
-                Enter the general exam password to see available test years.
-              </p>
+      <div className="max-w-4xl mx-auto py-10 space-y-8 animate-in fade-in duration-500">
+        <div className="text-center space-y-4">
+          <Badge className="bg-primary/10 text-primary hover:bg-primary/20 border-primary/20 px-4 py-1 text-xs font-black uppercase tracking-widest">Step 1 of 3</Badge>
+          <h1 className="text-4xl font-extrabold tracking-tight text-slate-900">Choose Your Subject</h1>
+          <p className="text-muted-foreground text-lg max-w-xl mx-auto">Select the subject from your stream to begin the examination process.</p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {loading ? (
+            Array(6).fill(0).map((_, i) => <div key={i} className="h-40 bg-muted animate-pulse rounded-3xl" />)
+          ) : subjects.length === 0 ? (
+            <div className="col-span-full text-center py-20 bg-muted/20 rounded-3xl border-2 border-dashed">
+              <BookOpen className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
+              <p className="text-muted-foreground font-bold italic">No subjects available for your stream yet.</p>
+            </div>
+          ) : (
+            subjects.map((sub) => (
+              <button
+                key={sub.id}
+                onClick={() => handleSubjectSelect(sub)}
+                className="group relative h-48 rounded-3xl overflow-hidden bg-white border border-slate-100 shadow-sm transition-all duration-500 hover:shadow-2xl hover:-translate-y-2 text-left p-8 flex flex-col justify-between"
+              >
+                <div className="absolute top-0 right-0 p-4 opacity-[0.03] group-hover:opacity-10 transition-opacity">
+                  <BookOpen className="w-32 h-32 text-primary" />
+                </div>
+                <div className="w-12 h-12 rounded-2xl bg-primary/5 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-colors duration-300">
+                  <BookOpen className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-extrabold text-slate-800 tracking-tight group-hover:text-primary transition-colors">{sub.name}</h3>
+                  <p className="text-xs font-bold text-muted-foreground mt-1 uppercase tracking-wider">Practice Exam Content</p>
+                </div>
+              </button>
+            ))
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // ── Phase: SELECT YEAR ───────────────────────────────────────────────────────
+  // ════════════════════════════════════════════════════════════════════════════
+  if (phase === "select-year") {
+    return (
+      <div className="max-w-xl mx-auto py-10 space-y-8 animate-in slide-in-from-bottom-4 fade-in duration-500">
+        <div className="flex items-center gap-4 mb-10">
+          <Button variant="ghost" onClick={() => setPhase("select-subject")} className="rounded-full w-12 h-12 p-0">
+             <ChevronLeft className="w-6 h-6" />
+          </Button>
+          <div className="flex-1">
+            <Badge className="bg-primary/10 text-primary border-primary/20 text-[10px] font-black uppercase">Step 2 of 3</Badge>
+            <h2 className="text-2xl font-black text-slate-900 leading-none mt-1">Select Question Year</h2>
+          </div>
+        </div>
+
+        <Card className="border-0 shadow-2xl rounded-[2.5rem] overflow-hidden">
+          <CardContent className="p-10 space-y-10">
+            <div className="flex items-center gap-6">
+               <div className="w-16 h-16 rounded-[1.25rem] bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
+                  <CalendarDays className="w-8 h-8" />
+               </div>
+               <div>
+                  <p className="text-xs font-black uppercase tracking-widest text-slate-400">Selected Subject</p>
+                  <p className="text-2xl font-black text-slate-900">{selectedSubject?.name}</p>
+               </div>
             </div>
 
-            <form onSubmit={handleVerifyPassword} className="space-y-5">
-              <div className="space-y-2">
-                <Input
-                  type="password"
-                  placeholder="Password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="text-center text-lg tracking-[0.5em] h-14 border-2 focus-visible:ring-primary"
-                  required
-                  autoFocus
-                />
-              </div>
-              <Button type="submit" className="w-full h-12 text-lg font-semibold" disabled={loading}>
-                {loading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : "Verify Access"}
-              </Button>
-            </form>
-
-            <div className="mt-8 pt-6 border-t flex items-center justify-center gap-2 text-xs text-muted-foreground">
-              <AlertTriangle className="w-4 h-4 text-amber-500" />
-              Unauthorized access is recorded for security.
+            <div className="space-y-4">
+              <Label className="text-xs font-black uppercase tracking-widest text-slate-500 ml-1">Available Years</Label>
+              {years.length === 0 ? (
+                <div className="p-8 text-center bg-muted/30 rounded-2xl border-2 border-dashed text-muted-foreground italic font-medium">
+                  No question banks available for this subject.
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-3">
+                  {years.map((yr) => (
+                    <button
+                      key={yr}
+                      onClick={() => setSelectedYear(yr)}
+                      className={`px-8 py-4 rounded-2xl text-lg font-black transition-all duration-300 border-2 ${
+                        selectedYear === yr 
+                          ? "bg-primary border-primary text-white shadow-lg shadow-primary/30 scale-105" 
+                          : "bg-slate-50 border-transparent hover:bg-slate-100 text-slate-400"
+                      }`}
+                    >
+                      {yr}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
+
+            <Button
+              className="w-full h-16 rounded-2xl text-xl font-black shadow-xl shadow-primary/20 uppercase tracking-tight"
+              onClick={handleYearSelect}
+              disabled={years.length === 0}
+            >
+              Continue to Access <ArrowRight className="ml-2 w-6 h-6" />
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -229,413 +276,258 @@ export default function ExamPage() {
   }
 
   // ════════════════════════════════════════════════════════════════════════════
-  // ── Phase: SELECT YEAR (Selective Tabs) ─────────────────────────────────────
+  // ── Phase: PASSWORD ──────────────────────────────────────────────────────────
   // ════════════════════════════════════════════════════════════════════════════
-  if (phase === "select-year") {
+  if (phase === "password") {
     return (
-      <div className="max-w-2xl mx-auto pt-10 space-y-6">
-        <div className="text-center space-y-2">
-          <h1 className="text-3xl font-extrabold tracking-tight">Select Exam Year</h1>
-          <p className="text-muted-foreground">Choose the year of questions you wish to practice with.</p>
-        </div>
-
-        <Card className="border-0 shadow-lg p-6">
-          {yearsLoading ? (
-            <div className="flex flex-col items-center justify-center py-12 space-y-4">
-              <Loader2 className="w-10 h-10 animate-spin text-primary" />
-              <p className="text-sm font-medium text-muted-foreground">Finding available years...</p>
+      <div className="max-w-md mx-auto py-10 animate-in zoom-in-95 duration-500">
+        <Card className="border-0 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] rounded-[3rem] overflow-hidden">
+          <CardContent className="p-10 text-center">
+            <div className="w-24 h-24 rounded-[2rem] bg-primary/10 flex items-center justify-center mx-auto mb-8 shadow-inner">
+               <Lock className="w-12 h-12 text-primary" />
             </div>
-          ) : years.length === 0 ? (
-            <div className="text-center py-12 space-y-4">
-              <CalendarDays className="w-12 h-12 text-muted-foreground/30 mx-auto" />
-              <p className="text-muted-foreground">No questions found in the database.</p>
-              <Button variant="outline" onClick={() => setPhase("password")}>Back to Login</Button>
-            </div>
-          ) : (
-            <div className="space-y-8">
-              <Tabs
-                value={String(selectedYear)}
-                onValueChange={(v) => setSelectedYear(Number(v))}
-                className="w-full"
-              >
-                <TabsList className="w-full h-14 bg-secondary/30 p-1 rounded-2xl">
-                  {years.map((yr) => (
-                    <TabsTrigger
-                      key={yr}
-                      value={String(yr)}
-                      className="flex-1 rounded-xl py-2 data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-primary font-bold text-lg"
-                    >
-                      {yr}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-              </Tabs>
+            
+            <Badge className="mb-4 bg-primary/10 text-primary border-primary/20 text-[10px] font-black uppercase">Final Step</Badge>
+            <h2 className="text-3xl font-black text-slate-900 tracking-tight">System Lock</h2>
+            <p className="text-muted-foreground font-medium mt-3 mb-10">Enter the secret examination password to unlock your session for <span className="text-primary font-bold">{selectedSubject?.name} ({selectedYear})</span>.</p>
 
-              <div className="bg-primary/5 rounded-2xl p-6 border border-primary/10 space-y-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Clock className="w-5 h-5 text-primary" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold">Timed Examination</h3>
-                    <p className="text-xs text-muted-foreground">Once started, you cannot pause the timer.</p>
-                  </div>
-                </div>
+            <form onSubmit={handleVerifyPassword} className="space-y-6">
+              <Input
+                type="password"
+                placeholder="••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="text-center text-3xl tracking-[0.8em] h-20 border-2 rounded-[1.5rem] bg-slate-50 border-slate-100 focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all font-mono"
+                required
+                autoFocus
+              />
+              <Button type="submit" className="w-full h-16 text-xl font-black rounded-2xl shadow-xl shadow-primary/20" disabled={loading}>
+                {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : "START EXAMINATION"}
+              </Button>
+            </form>
 
-                <Button
-                  onClick={handleStartExam}
-                  className="w-full h-14 text-xl font-black rounded-xl shadow-lg hover:shadow-primary/20 transition-all active:scale-[0.98]"
-                  disabled={loading}
-                >
-                  {loading ? <Loader2 className="w-6 h-6 animate-spin mr-2" /> : `START ${selectedYear} EXAM →`}
-                </Button>
-              </div>
-            </div>
-          )}
+            <button onClick={() => setPhase("select-year")} className="mt-8 text-xs font-bold text-muted-foreground uppercase tracking-widest hover:text-primary transition-colors">
+              Change Year or Subject
+            </button>
+          </CardContent>
         </Card>
       </div>
     );
   }
 
   // ════════════════════════════════════════════════════════════════════════════
-  // ── Phase: EXAM (Real-time Feedback) ────────────────────────────────────────
+  // ── Phase: EXAM ──────────────────────────────────────────────────────────────
   // ════════════════════════════════════════════════════════════════════════════
   if (phase === "exam" && session) {
     const q = session.questions[current];
     const opts = ["A", "B", "C", "D"] as const;
-    const progressPct = Math.round(((current + 1) / totalQ) * 100);
-    const timerCritical = timeLeft < 300;
+    const progressPct = Math.round(((current + 1) / (session.questions.length || 1)) * 100);
     const isRevealed = revealed[q.id];
-    const userChoice = answers[q.id];
 
     return (
-      <div className="max-w-3xl mx-auto space-y-6 pb-20 pt-4">
-        {/* Header Stats */}
-        <div className="sticky top-0 z-50 bg-background/80 backdrop-blur-md py-4 border-b border-border shadow-sm flex items-center justify-between px-4 rounded-b-2xl">
+      <div className="max-w-4xl mx-auto space-y-6 pb-20 pt-4">
+        {/* Exam Header */}
+        <div className="sticky top-0 z-50 bg-white/70 backdrop-blur-2xl py-6 px-8 rounded-3xl border border-white/40 shadow-xl flex items-center justify-between">
           <div className="flex items-center gap-6">
-            <div className={`flex items-center gap-2 px-4 py-2 rounded-full font-bold text-lg shadow-inner ${
-              timerCritical ? "bg-red-100 text-red-600 animate-pulse border border-red-200" : "bg-secondary text-secondary-foreground"
+            <div className={`px-6 py-3 rounded-2xl font-black text-2xl shadow-inner tabular-nums ${
+              timeLeft < 300 ? "bg-red-500 text-white animate-pulse" : "bg-slate-900 text-white"
             }`}>
-              <Clock className="w-5 h-5" />
               {formatTime(timeLeft)}
             </div>
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/5 text-primary text-sm font-bold border border-primary/10">
-              <CalendarDays className="w-4 h-4" /> {selectedYear}
+            <div className="hidden sm:block">
+              <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest leading-none mb-1">Subject</p>
+              <p className="font-extrabold text-sm">{selectedSubject?.name} • {selectedYear}</p>
             </div>
           </div>
-
-          <div className="flex flex-col items-end">
-            <span className="text-sm font-black text-primary uppercase tracking-widest">Question {current + 1} of {totalQ}</span>
-            <span className="text-xs text-muted-foreground font-medium">{answeredCount} Answered</span>
+          <div className="text-right">
+            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest leading-none mb-1">Progress</p>
+            <p className="font-extrabold text-lg text-primary">{current + 1} / {session.questions.length}</p>
           </div>
         </div>
 
-        {/* Progress bar */}
-        <div className="w-full h-2 bg-secondary/50 rounded-full overflow-hidden shadow-inner mx-auto max-w-2xl">
-          <div
-            className="h-full bg-primary rounded-full transition-all duration-500 ease-out shadow-[0_0_10px_rgba(var(--primary),0.5)]"
-            style={{ width: `${progressPct}%` }}
-          />
+        {/* Progress Bar */}
+        <div className="h-3 w-full bg-slate-200 rounded-full overflow-hidden shadow-inner mx-auto max-w-3xl">
+           <div 
+             className="h-full bg-gradient-to-r from-primary to-blue-500 transition-all duration-1000 ease-out" 
+             style={{ width: `${progressPct}%` }}
+           />
         </div>
 
-        {/* Question Card */}
-        <Card className="border-0 shadow-2xl relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-            <Trophy className="w-24 h-24 text-primary" />
-          </div>
+        {/* Question Area */}
+        <Card className="border-0 shadow-2xl rounded-[3rem] overflow-hidden bg-white/80 backdrop-blur-sm">
+          <CardContent className="p-10 md:p-16 space-y-12">
+             <div className="space-y-4">
+                <Badge className="bg-primary/5 text-primary border-primary/10 px-3 py-1 font-black uppercase text-[10px] tracking-widest">Question Segment</Badge>
+                <h2 className="text-2xl md:text-3xl font-extrabold text-slate-800 leading-tight">{q.questionText}</h2>
+             </div>
 
-          <CardContent className="p-8 md:p-12 space-y-10 relative z-10">
-            <div className="space-y-4">
-              <p className="text-primary font-black text-sm uppercase tracking-tighter flex items-center gap-2">
-                <span className="w-8 h-[2px] bg-primary"></span> Question Content
-              </p>
-              <h2 className="text-xl md:text-2xl font-bold leading-snug text-foreground/90">{q.questionText}</h2>
-            </div>
-
-            <div className="grid grid-cols-1 gap-4">
-              {opts.map((opt) => {
-                const text = q[`option${opt}` as keyof typeof q] as string;
-                const isSelected = userChoice === opt;
-                const isCorrect = q.correctAnswer === opt;
-
-                let stateCls = "border-border hover:border-primary/30 hover:bg-primary/5";
-                let icon = null;
-
-                if (isRevealed) {
-                  if (isCorrect) {
-                    stateCls = "bg-green-500/10 border-green-500 text-green-700 shadow-[0_0_15px_rgba(34,197,94,0.15)] ring-2 ring-green-500/20";
-                    icon = <div className="ml-auto w-6 h-6 rounded-full bg-green-500 flex items-center justify-center text-white scale-110 shadow-lg"><Check className="w-4 h-4 stroke-[4]" /></div>;
+             <div className="grid grid-cols-1 gap-4">
+                {opts.map((opt) => {
+                  const val = q[`option${opt}` as keyof typeof q] as string;
+                  const isSelected = answers[q.id] === opt;
+                  const isCorrect = q.correctAnswer === opt;
+                  
+                  let style = "bg-slate-50 border-slate-100 text-slate-500 hover:border-primary/20 hover:bg-slate-100/50";
+                  if (isRevealed) {
+                    if (isCorrect) style = "bg-emerald-500 border-emerald-500 text-white scale-[1.02] shadow-xl shadow-emerald-500/20";
+                    else if (isSelected) style = "bg-red-500 border-red-500 text-white scale-[1.02] shadow-xl shadow-red-500/20";
+                    else style = "bg-slate-50 border-slate-50 text-slate-300 opacity-60";
                   } else if (isSelected) {
-                    stateCls = "bg-red-500/10 border-red-500 text-red-700 shadow-[0_0_15px_rgba(239,68,68,0.15)] ring-2 ring-red-500/20";
-                    icon = <div className="ml-auto w-6 h-6 rounded-full bg-red-500 flex items-center justify-center text-white scale-110 shadow-lg"><X className="w-4 h-4 stroke-[4]" /></div>;
-                  } else {
-                    stateCls = "opacity-50 border-border bg-muted/20 grayscale-[0.5]";
+                    style = "bg-primary border-primary text-white scale-[1.02] shadow-xl shadow-primary/20";
                   }
-                }
 
-                return (
-                  <button
-                    key={opt}
-                    onClick={() => handleSelectAnswer(q.id, opt)}
-                    disabled={isRevealed}
-                    className={`w-full group/item flex items-center gap-5 p-5 md:p-6 rounded-2xl border-2 text-left transition-all duration-300 relative ${stateCls}`}
-                  >
-                    <span className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg font-black flex-shrink-0 transition-all shadow-sm ${
-                      isRevealed && isCorrect ? "bg-green-500 text-white" :
-                      isRevealed && isSelected && !isCorrect ? "bg-red-500 text-white" :
-                      isSelected ? "bg-primary text-white scale-110" : "bg-secondary text-muted-foreground group-hover/item:bg-primary/10 group-hover/item:text-primary"
-                    }`}>
-                      {opt}
-                    </span>
-                    <span className="text-base md:text-lg font-medium leading-tight flex-1">{text}</span>
-                    {icon}
-                  </button>
-                );
-              })}
-            </div>
+                  return (
+                    <button
+                      key={opt}
+                      onClick={() => handleSelectAnswer(q.id, opt)}
+                      disabled={isRevealed}
+                      className={`w-full text-left p-6 md:p-8 rounded-[1.75rem] border-2 transition-all duration-500 flex items-center gap-6 ${style}`}
+                    >
+                      <span className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-lg shadow-inner ${
+                        (isRevealed && (isCorrect || isSelected)) || isSelected ? "bg-white/20" : "bg-white text-slate-400 border border-slate-100"
+                      }`}>{opt}</span>
+                      <span className="text-lg md:text-xl font-bold leading-tight flex-1">{val}</span>
+                      {isRevealed && isCorrect && <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-emerald-600"><Check className="w-5 h-5 stroke-[4]" /></div>}
+                      {isRevealed && isSelected && !isCorrect && <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-red-600"><X className="w-5 h-5 stroke-[4]" /></div>}
+                    </button>
+                  );
+                })}
+             </div>
 
-            {isRevealed && (
-              <div className={`p-4 rounded-xl flex items-center gap-4 animate-in fade-in slide-in-from-top-2 duration-500 ${
-                userChoice === q.correctAnswer ? "bg-green-50 border border-green-100" : "bg-red-50 border border-red-100"
-              }`}>
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
-                  userChoice === q.correctAnswer ? "bg-green-100" : "bg-red-100"
-                }`}>
-                  {userChoice === q.correctAnswer ? <CheckCircle className="w-6 h-6 text-green-600" /> : <XCircle className="w-6 h-6 text-red-600" />}
-                </div>
-                <div className="flex-1">
-                  <p className={`font-bold text-sm ${userChoice === q.correctAnswer ? "text-green-800" : "text-red-800"}`}>
-                    {userChoice === q.correctAnswer ? "Correct Choice!" : "Wrong Choice"}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    The correct answer is <span className="font-black text-green-700">{q.correctAnswer}</span>.
-                  </p>
-                </div>
-              </div>
-            )}
+             {isRevealed && (
+               <div className={`p-6 rounded-[1.5rem] flex items-center gap-5 border-2 animate-in slide-in-from-top-4 duration-500 ${
+                 answers[q.id] === q.correctAnswer ? "bg-emerald-50 border-emerald-100 text-emerald-800" : "bg-red-50 border-red-100 text-red-800"
+               }`}>
+                  <div className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 ${
+                    answers[q.id] === q.correctAnswer ? "bg-emerald-500 text-white" : "bg-red-500 text-white"
+                  }`}>
+                     {answers[q.id] === q.correctAnswer ? <CheckCircle className="w-8 h-8" /> : <XCircle className="w-8 h-8" />}
+                  </div>
+                  <div>
+                    <p className="font-extrabold text-lg uppercase tracking-tight">{answers[q.id] === q.correctAnswer ? "Excellent Work!" : "Incorrect Option"}</p>
+                    <p className="text-sm font-medium opacity-80">Correct Answer is <span className="font-black px-2 py-0.5 rounded bg-white/50">{q.correctAnswer}</span></p>
+                  </div>
+               </div>
+             )}
           </CardContent>
         </Card>
 
-        {/* Navigation */}
+        {/* Exam Navigation */}
         <div className="flex items-center gap-4 max-w-2xl mx-auto">
-          <Button
-            variant="ghost"
-            size="lg"
-            disabled={current === 0}
-            onClick={() => setCurrent((c) => c - 1)}
-            className="rounded-xl font-bold h-14 px-6 hover:bg-secondary"
-          >
-            <ChevronLeft className="w-5 h-5 mr-2" /> Back
-          </Button>
-
-          {current < totalQ - 1 ? (
-            <Button
-              size="lg"
-              className="flex-1 h-14 rounded-xl text-xl font-black shadow-lg"
-              onClick={() => setCurrent((c) => c + 1)}
-              disabled={!isRevealed}
-            >
-              NEXT QUESTION <ChevronRight className="w-6 h-6 ml-2" />
-            </Button>
-          ) : (
-            <Button
-              size="lg"
-              className="flex-1 h-14 rounded-xl text-xl font-black shadow-lg bg-green-600 hover:bg-green-700"
-              onClick={() => setShowSubmitConfirm(true)}
-              disabled={loading || !isRevealed}
-            >
-              <Send className="w-6 h-6 mr-2" /> FINISH & SUBMIT
-            </Button>
-          )}
+           <Button variant="ghost" size="lg" className="rounded-2xl h-16 font-extrabold px-8 flex-shrink-0" onClick={() => setCurrent(c => Math.max(0, c - 1))} disabled={current === 0}>
+              <ChevronLeft className="w-6 h-6 mr-2" /> PREV
+           </Button>
+           
+           {current < session.questions.length - 1 ? (
+             <Button size="lg" className="flex-1 h-16 rounded-2xl font-black text-xl shadow-xl shadow-primary/20" onClick={() => setCurrent(c => c + 1)} disabled={!isRevealed}>
+                CONTINUE <ChevronRight className="w-6 h-6 ml-2" />
+             </Button>
+           ) : (
+             <Button size="lg" className="flex-1 h-16 rounded-2xl font-black text-xl bg-orange-500 hover:bg-orange-600 shadow-xl shadow-orange-500/20" onClick={() => setShowSubmitConfirm(true)} disabled={!isRevealed}>
+                FINISH TEST <Send className="w-6 h-6 ml-2" />
+             </Button>
+           ) }
         </div>
 
-        {/* Submit confirmation */}
+        {/* Auto Navigator */}
+        <div className="pt-10 flex flex-wrap justify-center gap-2 px-8">
+           {session.questions.map((sq, i) => {
+             const answered = revealed[sq.id];
+             const correct = answered && answers[sq.id] === sq.correctAnswer;
+             const isCurr = i === current;
+             return (
+               <button
+                 key={sq.id}
+                 onClick={() => setCurrent(i)}
+                 className={`w-10 h-10 rounded-xl font-black text-xs transition-all border-2 ${
+                   isCurr ? "bg-primary border-primary text-white scale-125 z-10 shadow-lg ring-4 ring-primary/10" :
+                   answered ? (correct ? "bg-emerald-500 border-emerald-500 text-white" : "bg-red-500 border-red-500 text-white") :
+                   "bg-slate-100 border-slate-100 text-slate-400 group-hover:bg-slate-200"
+                 }`}
+               >
+                 {i + 1}
+               </button>
+             );
+           })}
+        </div>
+
+        {/* Confirmation Modal Overlay */}
         {showSubmitConfirm && (
-          <Card className="border-amber-200 bg-amber-50 shadow-2xl animate-in zoom-in-95 duration-300">
-            <CardContent className="p-8">
-              <div className="flex items-start gap-5 mb-6">
-                <div className="w-14 h-14 rounded-2xl bg-amber-100 flex items-center justify-center flex-shrink-0 shadow-inner">
-                  <AlertTriangle className="w-8 h-8 text-amber-600" />
-                </div>
-                <div>
-                  <p className="font-extrabold text-xl text-amber-900 leading-none">Ready to submit?</p>
-                  <p className="text-amber-800/80 text-sm mt-3 font-medium">
-                    You have answered {answeredCount} of {totalQ} questions.
-                    This operation is final and your score will be recorded.
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-4">
-                <Button variant="outline" className="flex-1 h-14 rounded-xl font-bold text-lg border-amber-200 hover:bg-amber-100" onClick={() => setShowSubmitConfirm(false)}>
-                  Double Check
-                </Button>
-                <Button
-                  className="flex-1 h-14 rounded-xl text-lg font-black bg-green-600 hover:bg-green-700 shadow-lg"
-                  onClick={() => doSubmit(answers, startTime)}
-                  disabled={loading}
-                >
-                  {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "YES, SUBMIT NOW"}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Navigator Mini */}
-        <div className="pt-10">
-          <p className="text-xs font-black text-muted-foreground uppercase tracking-[0.2em] text-center mb-6">Quick Navigator</p>
-          <div className="flex flex-wrap justify-center gap-3 max-w-2xl mx-auto">
-            {session.questions.map((q2, idx) => {
-              const isAnswered = !!revealed[q2.id];
-              const isCorrect = isAnswered && answers[q2.id] === q2.correctAnswer;
-              const isCurr = idx === current;
-
-              return (
-                <button
-                  key={q2.id}
-                  onClick={() => setCurrent(idx)}
-                  className={`w-10 h-10 rounded-xl text-sm font-black transition-all border-2 ${
-                    isCurr ? "bg-primary text-white border-primary scale-125 z-10 shadow-lg" :
-                    isAnswered ? (isCorrect ? "bg-green-500/10 border-green-500 text-green-700" : "bg-red-500/10 border-red-500 text-red-700") :
-                    "bg-secondary/40 border-transparent text-muted-foreground hover:border-primary/20"
-                  }`}
-                >
-                  {idx + 1}
-                </button>
-              );
-            })}
+          <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-6">
+             <Card className="max-w-md w-full border-0 shadow-[0_32px_128px_-16px_rgba(0,0,0,0.5)] rounded-[3rem] animate-in zoom-in-95 duration-300">
+                <CardContent className="p-10 text-center space-y-8">
+                   <div className="w-24 h-24 rounded-[2rem] bg-orange-500 flex items-center justify-center mx-auto text-white shadow-xl shadow-orange-500/20">
+                      <AlertTriangle className="w-12 h-12" />
+                   </div>
+                   <div className="space-y-2">
+                     <h3 className="text-2xl font-black text-slate-900">Final Submission?</h3>
+                     <p className="text-slate-500 font-medium">You have completed all questions. Once submitted, your score will be permanently archived.</p>
+                   </div>
+                   <div className="flex flex-col gap-3">
+                      <Button className="h-16 rounded-2xl text-xl font-black bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-500/20" onClick={() => doSubmit(answers, startTime)}>
+                         SUBMIT RESULTS NOW
+                      </Button>
+                      <Button variant="ghost" className="h-14 rounded-2xl font-bold text-slate-400" onClick={() => setShowSubmitConfirm(false)}>
+                         GO BACK TO REVIEW
+                      </Button>
+                   </div>
+                </CardContent>
+             </Card>
           </div>
-        </div>
+        )}
       </div>
     );
   }
 
   // ════════════════════════════════════════════════════════════════════════════
-  // ── Phase: RESULT (Same as before but with cleaner styling) ────────────────
+  // ── Phase: RESULT ────────────────────────────────────────────────────────────
   // ════════════════════════════════════════════════════════════════════════════
   if (phase === "result" && result) {
-    const entries = Object.entries(result.detailedResults);
-    const opts = ["A", "B", "C", "D"] as const;
-
+    const passed = result.percentage >= 50;
     return (
-      <div className="max-w-3xl mx-auto space-y-8 pb-20 pt-10">
-        <Card className="border-0 shadow-2xl overflow-hidden rounded-3xl">
-          <div className={`h-3 ${result.passed ? "bg-green-500" : "bg-red-500"}`} />
-          <CardContent className="p-10 md:p-16 text-center space-y-8">
-            <div className={`w-32 h-32 rounded-[2.5rem] flex items-center justify-center mx-auto shadow-2xl ${result.passed ? "bg-green-500 text-white rotate-6" : "bg-red-500 text-white -rotate-6"}`}>
-              {result.passed ? <Trophy className="w-16 h-16 stroke-[2.5]" /> : <XCircle className="w-16 h-16 stroke-[2.5]" />}
-            </div>
+      <div className="max-w-3xl mx-auto py-10 space-y-12 animate-in fade-in duration-1000">
+        <Card className="border-0 shadow-2xl rounded-[3.5rem] overflow-hidden bg-white">
+           <div className={`h-4 ${passed ? "bg-emerald-500" : "bg-red-500"}`} />
+           <CardContent className="p-12 md:p-20 text-center flex flex-col items-center">
+              <div className={`w-32 h-32 rounded-[2.5rem] flex items-center justify-center shadow-2xl mb-10 transition-transform hover:scale-110 duration-500 ${
+                passed ? "bg-emerald-500 text-white rotate-6" : "bg-red-500 text-white -rotate-6"
+              }`}>
+                {passed ? <Trophy className="w-16 h-16" /> : <XCircle className="w-16 h-16" />}
+              </div>
 
-            <div className="space-y-2">
-              <h2 className="text-4xl font-black tracking-tighter">
-                {result.passed ? "EXAM PASSED!" : "NOT QUITE YET"}
-              </h2>
-              <p className="text-muted-foreground font-medium text-lg">
-                {result.passed ? "Brilliant! You've successfully cleared this year's assessment." : "Don't give up! Review your mistakes and try another attempt."}
-              </p>
-            </div>
+              <div className="space-y-4 mb-12">
+                 <h1 className="text-5xl font-black tracking-tighter text-slate-900 leading-none">
+                   {passed ? "CONGRATULATIONS!" : "EFFORT REQUIRED"}
+                 </h1>
+                 <p className="text-xl text-slate-500 font-medium">Your final score for <span className="text-primary font-extrabold">{selectedSubject?.name}</span> has been calculated.</p>
+              </div>
 
-            <div className="grid grid-cols-2 gap-px bg-border max-w-md mx-auto rounded-3xl overflow-hidden border">
-              <div className="bg-card p-6">
-                <p className="text-5xl font-black text-primary">{result.score}</p>
-                <p className="text-[10px] uppercase font-black tracking-widest text-muted-foreground mt-2">Correct Answers</p>
+              <div className="grid grid-cols-2 gap-8 w-full max-w-md mx-auto mb-12">
+                 <div className="bg-slate-50 p-8 rounded-[2rem] border border-slate-100 shadow-inner">
+                    <p className="text-5xl font-black text-slate-900">{result.score}</p>
+                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mt-2">{result.score === 1 ? "Correct" : "Corrects"}</p>
+                 </div>
+                 <div className="bg-slate-50 p-8 rounded-[2rem] border border-slate-100 shadow-inner">
+                    <p className={`text-5xl font-black ${passed ? "text-emerald-500" : "text-red-500"}`}>{result.percentage}%</p>
+                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mt-2">Score Rate</p>
+                 </div>
               </div>
-              <div className="bg-card p-6">
-                <p className={`text-5xl font-black ${result.passed ? "text-green-600" : "text-red-600"}`}>{result.percentage}%</p>
-                <p className="text-[10px] uppercase font-black tracking-widest text-muted-foreground mt-2">Final Percentage</p>
-              </div>
-            </div>
 
-            <div className="max-w-xs mx-auto pt-4">
-               <div className="h-4 bg-secondary rounded-full overflow-hidden shadow-inner flex items-center p-1">
-                <div
-                  className={`h-full rounded-full transition-all duration-[2000ms] ease-out ${result.passed ? "bg-green-500" : "bg-red-500"}`}
-                  style={{ width: `${result.percentage}%` }}
-                >
-                  <div className="w-full h-full bg-white/20 animate-pulse"></div>
-                </div>
-              </div>
-              <div className="flex justify-between text-[10px] font-black uppercase text-muted-foreground mt-2 px-1">
-                <span>Beginner</span>
-                <span className="text-amber-600">50% PASS POINT</span>
-                <span>Expert</span>
-              </div>
-            </div>
-          </CardContent>
+              <Button className="h-16 rounded-2xl w-full max-w-xs text-xl font-black shadow-xl" onClick={handleReset}>
+                <RotateCcw className="w-5 h-5 mr-3" /> TRY AGAIN
+              </Button>
+              <button onClick={() => window.location.href="/student"} className="mt-8 text-xs font-black uppercase text-slate-400 tracking-widest hover:text-primary transition-colors">
+                Return to Home
+              </button>
+           </CardContent>
         </Card>
-
-        {/* Detailed Review */}
-        <div className="space-y-6">
-          <h3 className="text-2xl font-black tracking-tight flex items-center gap-3">
-             <span className="w-2 h-8 bg-primary rounded-full"></span> Detailed Review
-          </h3>
-          <div className="space-y-4">
-            {entries.map(([qId, r], idx) => (
-              <Card key={qId} className="border-0 shadow-lg rounded-2xl group transition-all hover:shadow-xl">
-                <div className={`h-1.5 w-full ${r.isCorrect ? "bg-green-500/20" : "bg-red-500/20"}`}>
-                  <div className={`h-full ${r.isCorrect ? "bg-green-500" : "bg-red-500"}`} style={{width: "4%"}} />
-                </div>
-                <CardContent className="p-6 md:p-8">
-                  <div className="flex items-start gap-6">
-                    <div className={`mt-1 flex-shrink-0 w-10 h-10 rounded-2xl flex items-center justify-center shadow-lg transition-transform group-hover:scale-110 ${r.isCorrect ? "bg-green-500 text-white" : "bg-red-500 text-white"}`}>
-                      {r.isCorrect ? <CheckCircle className="w-6 h-6 stroke-[3]" /> : <XCircle className="w-6 h-6 stroke-[3]" />}
-                    </div>
-                    <div className="flex-1 space-y-6">
-                      <p className="font-bold text-lg leading-snug">
-                        <span className="text-primary/40 mr-2 font-black">Q{idx + 1}.</span>
-                        {r.questionText}
-                      </p>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {opts.map((opt) => {
-                          const text = r[`option${opt}` as keyof typeof r] as string;
-                          const isSelected = r.selected === opt;
-                          const isCorrect = r.correct === opt;
-                          let cls = "bg-secondary/40 text-muted-foreground border-transparent";
-
-                          if (isCorrect) cls = "bg-green-500/10 border-green-500 text-green-700 font-bold";
-                          else if (isSelected && !isCorrect) cls = "bg-red-500/10 border-red-500 text-red-700 font-bold";
-
-                          return (
-                            <div key={opt} className={`text-sm px-5 py-3.5 rounded-xl flex items-center gap-3 border-2 transition-all ${cls}`}>
-                              <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black shadow-sm ${
-                                isCorrect ? "bg-green-500 text-white" :
-                                isSelected && !isCorrect ? "bg-red-500 text-white" :
-                                "bg-card text-muted-foreground"
-                              }`}>{opt}</span>
-                              <span className="flex-1">{text}</span>
-                              {isCorrect && <Check className="w-4 h-4 text-green-600 stroke-[3]" />}
-                              {isSelected && !isCorrect && <X className="w-4 h-4 text-red-600 stroke-[3]" />}
-                            </div>
-                          );
-                        })}
-                      </div>
-                      {!r.isCorrect && (
-                        <div className="flex items-center gap-2 px-4 py-2 bg-green-50 border border-green-100 rounded-lg w-fit">
-                          <Check className="w-4 h-4 text-green-600 stroke-[3]" />
-                          <p className="text-xs font-bold text-green-800">
-                             Correct: <span className="font-black underline px-1">{r.correct}</span>
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-
-        <div className="flex flex-col items-center gap-4 py-10">
-           <Button className="h-14 rounded-2xl w-full max-w-md text-lg font-black shadow-xl" onClick={handleReset}>
-            <RotateCcw className="w-5 h-5 mr-3" /> TRY ANOTHER YEAR
-          </Button>
-          <a href="/student" className="text-sm font-black text-muted-foreground hover:text-primary transition-colors tracking-widest uppercase">
-            Return to Dashboard
-          </a>
-        </div>
       </div>
     );
   }
 
-  return null;
+  return (
+    <div className="min-h-[60vh] flex items-center justify-center font-black text-slate-300 animate-pulse text-2xl uppercase tracking-[0.2em]">
+       Loading System...
+    </div>
+  );
 }

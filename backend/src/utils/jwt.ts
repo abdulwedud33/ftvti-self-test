@@ -5,7 +5,7 @@ const JWT_SECRET = process.env.JWT_SECRET || "fallback-secret-change-in-producti
 export interface JwtPayload {
   userId: string;
   username: string;
-  role: "ADMIN" | "STUDENT";
+  role: "ADMIN" | "STUDENT" | "INSTRUCTOR";
 }
 
 export const signToken = (payload: JwtPayload): string => {

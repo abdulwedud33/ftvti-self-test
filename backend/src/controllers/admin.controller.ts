@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import prisma from "../utils/prisma";
+import { Role, Stream } from "@prisma/client";
 
 // ─── Students ─────────────────────────────────────────────────────────────────
 
@@ -11,13 +12,17 @@ const createStudentSchema = z.object({
   fullName: z.string().min(2),
   studentId: z.string().min(3),
   departmentId: z.string().min(1),
+  stream: z.nativeEnum(Stream),
 });
 
 export const getStudents = async (_req: Request, res: Response): Promise<void> => {
   try {
     const students = await prisma.student.findMany({
-      include: { user: { select: { username: true, role: true, createdAt: true } }, department: true },
-      orderBy: { department: { name: "asc" } },
+      include: {
+        user: { select: { username: true, role: true, createdAt: true } },
+        department: true,
+      },
+      orderBy: { createdAt: "desc" },
     });
     res.json(students);
   } catch {
@@ -32,7 +37,7 @@ export const createStudent = async (req: Request, res: Response): Promise<void> 
 
     const result = await prisma.$transaction(async (tx) => {
       const user = await tx.user.create({
-        data: { username: data.username, password: hashedPassword, role: "STUDENT" },
+        data: { username: data.username, password: hashedPassword, role: Role.STUDENT },
       });
       const student = await tx.student.create({
         data: {
@@ -40,6 +45,7 @@ export const createStudent = async (req: Request, res: Response): Promise<void> 
           fullName: data.fullName,
           studentId: data.studentId,
           departmentId: data.departmentId,
+          stream: data.stream,
         },
         include: { department: true },
       });
@@ -56,22 +62,125 @@ export const createStudent = async (req: Request, res: Response): Promise<void> 
   }
 };
 
-export const deleteStudent = async (req: Request, res: Response): Promise<void> => {
+// ─── Instructors ──────────────────────────────────────────────────────────────
+
+const createInstructorSchema = z.object({
+  username: z.string().min(3),
+  password: z.string().min(6),
+  fullName: z.string().min(2), // We'll store this in User or add if needed. For now let's just use username as identifier.
+  stream: z.nativeEnum(Stream),
+  subjectId: z.string().min(1),
+});
+
+export const getInstructors = async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const instructors = await prisma.instructor.findMany({
+      include: {
+        user: { select: { username: true, createdAt: true } },
+        subject: true,
+      },
+      orderBy: { stream: "asc" },
+    });
+    res.json(instructors);
+  } catch {
+    res.status(500).json({ error: "Failed to fetch instructors" });
+  }
+};
+
+export const createInstructor = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const data = createInstructorSchema.parse(req.body);
+    const hashedPassword = await bcrypt.hash(data.password, 10);
+
+    const result = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          username: data.username,
+          password: hashedPassword,
+          role: Role.INSTRUCTOR,
+        },
+      });
+      const instructor = await tx.instructor.create({
+        data: {
+          userId: user.id,
+          stream: data.stream,
+          subjectId: data.subjectId,
+        },
+        include: { subject: true },
+      });
+      return instructor;
+    });
+
+    res.status(201).json(result);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ error: error.errors[0].message });
+      return;
+    }
+    res.status(500).json({ error: "Failed to create instructor" });
+  }
+};
+
+export const deleteInstructor = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const student = await prisma.student.findUnique({ where: { id } });
-    if (!student) { res.status(404).json({ error: "Student not found" }); return; }
-    // Cascade deletes user (and student) via prisma schema
-    await prisma.user.delete({ where: { id: student.userId } });
-    res.json({ message: "Student deleted" });
+    const instructor = await prisma.instructor.findUnique({ where: { id } });
+    if (!instructor) {
+      res.status(404).json({ error: "Instructor not found" });
+      return;
+    }
+    await prisma.user.delete({ where: { id: instructor.userId } });
+    res.json({ message: "Instructor deleted" });
   } catch {
-    res.status(500).json({ error: "Failed to delete student" });
+    res.status(500).json({ error: "Failed to delete instructor" });
+  }
+};
+
+// ─── Subjects ─────────────────────────────────────────────────────────────────
+
+const createSubjectSchema = z.object({
+  name: z.string().min(2),
+  stream: z.nativeEnum(Stream),
+});
+
+export const getSubjects = async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const subjects = await prisma.subject.findMany({
+      orderBy: [{ stream: "asc" }, { name: "asc" }],
+    });
+    res.json(subjects);
+  } catch {
+    res.status(500).json({ error: "Failed to fetch subjects" });
+  }
+};
+
+export const createSubject = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const data = createSubjectSchema.parse(req.body);
+    const subject = await prisma.subject.create({
+      data,
+    });
+    res.status(201).json(subject);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ error: error.errors[0].message });
+      return;
+    }
+    res.status(500).json({ error: "Failed to create subject" });
+  }
+};
+
+export const deleteSubject = async (req: Request, res: Response): Promise<void> => {
+  try {
+    await prisma.subject.delete({ where: { id: req.params.id } });
+    res.json({ message: "Subject deleted" });
+  } catch {
+    res.status(500).json({ error: "Failed to delete subject" });
   }
 };
 
 // ─── Questions ────────────────────────────────────────────────────────────────
 
-// [UPDATED] Added year field (integer, 2000–2100, default 2025)
 const createQuestionSchema = z.object({
   questionText: z.string().min(5),
   optionA: z.string().min(1),
@@ -79,13 +188,14 @@ const createQuestionSchema = z.object({
   optionC: z.string().min(1),
   optionD: z.string().min(1),
   correctAnswer: z.enum(["A", "B", "C", "D"]),
-  year: z.number().int().min(2000).max(2100).default(2025), // [NEW]
+  year: z.number().int().min(2000).max(2100).default(2025),
+  subjectId: z.string().min(1),
 });
 
 export const getQuestions = async (_req: Request, res: Response): Promise<void> => {
   try {
-    // [UPDATED] Order by year desc, then createdAt desc for better organisation
     const questions = await prisma.question.findMany({
+      include: { subject: true },
       orderBy: [{ year: "desc" }, { createdAt: "desc" }],
     });
     res.json(questions);
@@ -98,7 +208,7 @@ export const createQuestion = async (req: Request, res: Response): Promise<void>
   try {
     const data = createQuestionSchema.parse(req.body);
     const question = await prisma.question.create({
-      data: { ...data, createdBy: req.user!.userId }, // year is now included from data
+      data: { ...data, createdBy: req.user!.userId },
     });
     res.status(201).json(question);
   } catch (error) {
@@ -119,7 +229,6 @@ export const deleteQuestion = async (req: Request, res: Response): Promise<void>
   }
 };
 
-// [NEW] Return all distinct years from the question bank, sorted descending
 export const getQuestionYears = async (_req: Request, res: Response): Promise<void> => {
   try {
     const rows = await prisma.question.findMany({
@@ -178,7 +287,8 @@ export const deleteEvent = async (req: Request, res: Response): Promise<void> =>
 // ─── Exam Config ──────────────────────────────────────────────────────────────
 
 const examConfigSchema = z.object({
-  password: z.string().min(4),
+  naturalPassword: z.string().min(4),
+  socialPassword: z.string().min(4),
   durationMins: z.number().int().min(5).max(300),
   isActive: z.boolean().optional(),
 });
@@ -215,7 +325,10 @@ export const updateExamConfig = async (req: Request, res: Response): Promise<voi
 export const getAllResults = async (_req: Request, res: Response): Promise<void> => {
   try {
     const results = await prisma.examAttempt.findMany({
-      include: { student: { include: { department: true } } },
+      include: {
+        student: { include: { department: true } },
+        subject: true,
+      },
       orderBy: { createdAt: "desc" },
     });
     res.json(results);
@@ -256,16 +369,17 @@ export const getDepartments = async (_req: Request, res: Response): Promise<void
 
 export const getDashboardStats = async (_req: Request, res: Response): Promise<void> => {
   try {
-    const [totalStudents, totalQuestions, totalAttempts, totalEvents] = await Promise.all([
+    const [totalStudents, totalQuestions, totalAttempts, totalEvents, totalInstructors] = await Promise.all([
       prisma.student.count(),
       prisma.question.count(),
       prisma.examAttempt.count({ where: { isCompleted: true } }),
       prisma.event.count(),
+      prisma.instructor.count(),
     ]);
 
     const recentAttempts = await prisma.examAttempt.findMany({
       where: { isCompleted: true },
-      include: { student: true },
+      include: { student: true, subject: true },
       orderBy: { createdAt: "desc" },
       take: 5,
     });
@@ -280,10 +394,26 @@ export const getDashboardStats = async (_req: Request, res: Response): Promise<v
       totalQuestions,
       totalAttempts,
       totalEvents,
+      totalInstructors,
       avgScore: Math.round(avgScoreResult._avg.score || 0),
       recentAttempts,
     });
   } catch {
     res.status(500).json({ error: "Failed to fetch dashboard stats" });
+  }
+};
+
+export const deleteStudent = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const student = await prisma.student.findUnique({ where: { id } });
+    if (!student) {
+      res.status(404).json({ error: "Student not found" });
+      return;
+    }
+    await prisma.user.delete({ where: { id: student.userId } });
+    res.json({ message: "Student deleted" });
+  } catch {
+    res.status(500).json({ error: "Failed to delete student" });
   }
 };

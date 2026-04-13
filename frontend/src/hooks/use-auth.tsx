@@ -7,12 +7,16 @@ import { authApi } from "@/lib/api";
 interface User {
   id: string;
   username: string;
-  role: "ADMIN" | "STUDENT";
+  role: "ADMIN" | "STUDENT" | "INSTRUCTOR";
   student?: {
     id: string;
     fullName: string;
     studentId: string;
     department: { id: string; name: string };
+  } | null;
+  instructor?: {
+    id: string;
+    subject: { id: string; name: string };
   } | null;
 }
 
@@ -47,8 +51,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (username: string, password: string) => {
     const data = await authApi.login(username, password) as { user: User };
     setUser(data.user);
+    
     if (data.user.role === "ADMIN") {
       router.push("/admin");
+    } else if (data.user.role === "INSTRUCTOR") {
+      router.push("/instructor");
     } else {
       router.push("/student");
     }

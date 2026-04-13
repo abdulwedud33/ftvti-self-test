@@ -9,26 +9,57 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+enum Role {
+  ADMIN
+  STUDENT
+  INSTRUCTOR
+}
+
+enum Stream {
+  NATURAL_SCIENCE
+  SOCIAL_SCIENCE
+}
+
 model User {
-  id        String   @id @default(cuid())
-  username  String   @unique
-  password  String
-  role      Role     @default(STUDENT)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  student   Student?
+  id         String      @id @default(cuid())
+  username   String      @unique
+  password   String
+  role       Role        @default(STUDENT)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  student    Student?
+  instructor Instructor?
 }
 
 model Student {
-  id           String       @id @default(cuid())
-  userId       String       @unique
-  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id           String        @id @default(cuid())
+  userId       String        @unique
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   fullName     String
-  studentId    String       @unique
+  studentId    String        @unique
   departmentId String
-  department   Department   @relation(fields: [departmentId], references: [id])
+  department   Department    @relation(fields: [departmentId], references: [id])
+  stream       Stream        @default(NATURAL_SCIENCE)
   examAttempts ExamAttempt[]
   comments     Comment[]
+}
+
+model Instructor {
+  id        String  @id @default(cuid())
+  userId    String  @unique
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subjectId String
+  subject   Subject @relation(fields: [subjectId], references: [id])
+  stream    Stream
+}
+
+model Subject {
+  id           String        @id @default(cuid())
+  name         String
+  stream       Stream
+  questions    Question[]
+  instructors  Instructor[]
+  examAttempts ExamAttempt[]
 }
 
 model Department {
@@ -44,34 +75,39 @@ model Question {
   optionB       String
   optionC       String
   optionD       String
-  correctAnswer String   // "A" | "B" | "C" | "D"
-  year          Int      @default(2025) // [NEW] exam year for year-based filtering
+  correctAnswer String // "A" | "B" | "C" | "D"
+  year          Int      @default(2025)
+  subjectId     String? // Made optional for initial migration
+  subject       Subject? @relation(fields: [subjectId], references: [id])
   createdBy     String
   createdAt     DateTime @default(now())
 }
 
-
 model ExamAttempt {
-  id             String   @id @default(cuid())
+  id             String    @id @default(cuid())
   studentId      String
-  student        Student  @relation(fields: [studentId], references: [id])
+  student        Student   @relation(fields: [studentId], references: [id])
+  subjectId      String?
+  subject        Subject?  @relation(fields: [subjectId], references: [id])
+  year           Int?
   startTime      DateTime
   endTime        DateTime?
-  score          Int      @default(0)
+  score          Int       @default(0)
   totalQuestions Int
-  answers        Json     // { questionId: selectedOption }
-  isCompleted    Boolean  @default(false)
-  createdAt      DateTime @default(now())
+  answers        Json      // { questionId: selectedOption }
+  isCompleted    Boolean   @default(false)
+  createdAt      DateTime  @default(now())
 }
 
 model ExamConfig {
-  id           String   @id @default(cuid())
-  password     String
-  durationMins Int      @default(60)
-  isActive     Boolean  @default(true)
-  createdBy    String
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id              String   @id @default(cuid())
+  naturalPassword String   @default("natural123")
+  socialPassword  String   @default("social123")
+  durationMins    Int      @default(60)
+  isActive        Boolean  @default(true)
+  createdBy       String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
 model Event {
@@ -89,9 +125,4 @@ model Comment {
   student   Student  @relation(fields: [studentId], references: [id])
   message   String
   createdAt DateTime @default(now())
-}
-
-enum Role {
-  ADMIN
-  STUDENT
 }
