@@ -86,7 +86,7 @@ export const adminApi = {
   // Exam Config
   examConfig: () => apiFetch<ExamConfig>("/admin/exam-config"),
   updateExamConfig: (data: Partial<ExamConfig>) =>
-    apiFetch("/admin/exam-config", { method: "PUT", body: data }),
+    apiFetch<ExamConfig>("/admin/exam-config", { method: "PUT", body: data }),
 
   // Logs & Comments
   results: () => apiFetch<ExamAttempt[]>("/admin/results"),
