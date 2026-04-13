@@ -442,9 +442,18 @@ export const deleteStudent = async (req: Request, res: Response): Promise<void> 
       res.status(404).json({ error: "Student not found" });
       return;
     }
+    
+    // Delete related records first to avoid cascade constraint violations
+    await prisma.examAttempt.deleteMany({ where: { studentId: id } });
+    await prisma.comment.deleteMany({ where: { studentId: id } });
+    
+    // Delete the student record
+    await prisma.student.delete({ where: { id } });
+    
+    // Finally, delete the user account
     await prisma.user.delete({ where: { id: student.userId } });
     res.json({ message: "Student deleted" });
-  } catch {
-    res.status(500).json({ error: "Failed to delete student" });
+  } catch (error: any) {
+    res.status(500).json({ error: error?.message ?? "Failed to delete student" });
   }
 };

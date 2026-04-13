@@ -8,6 +8,7 @@ router.use(authenticate, requireStudent);
 router.get("/profile", getMyProfile);
 router.get("/results", getMyResults);
 router.get("/events", getEvents);
+router.get("/announcements", getEvents); // Alias for frontend compatibility
 router.post("/feedback", submitFeedback);
 
 export default router;
