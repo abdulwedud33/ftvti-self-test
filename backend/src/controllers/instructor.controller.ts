@@ -15,12 +15,29 @@ export const getInstructorDashboard = async (req: Request, res: Response): Promi
     }
 
     const [questionCount, attemptCount] = await Promise.all([
-      prisma.question.count({ where: { subjectId: instructor.subjectId } }),
-      prisma.examAttempt.count({ where: { subjectId: instructor.subjectId, isCompleted: true } }),
+      prisma.question.count({
+        where: {
+          subjectId: instructor.subjectId,
+          subject: { stream: instructor.stream },
+        },
+      }),
+      prisma.examAttempt.count({
+        where: {
+          subjectId: instructor.subjectId,
+          isCompleted: true,
+          subject: { stream: instructor.stream },
+          student: { stream: instructor.stream },
+        },
+      }),
     ]);
 
     const recentResults = await prisma.examAttempt.findMany({
-      where: { subjectId: instructor.subjectId, isCompleted: true },
+      where: {
+        subjectId: instructor.subjectId,
+        isCompleted: true,
+        subject: { stream: instructor.stream },
+        student: { stream: instructor.stream },
+      },
       include: { student: true },
       orderBy: { createdAt: "desc" },
       take: 10,
@@ -51,7 +68,10 @@ export const getInstructorQuestions = async (req: Request, res: Response): Promi
     }
 
     const questions = await prisma.question.findMany({
-      where: { subjectId: instructor.subjectId },
+      where: {
+        subjectId: instructor.subjectId,
+        subject: { stream: instructor.stream },
+      },
       orderBy: [{ year: "desc" }, { createdAt: "desc" }],
     });
 
@@ -73,7 +93,12 @@ export const getInstructorResults = async (req: Request, res: Response): Promise
     }
 
     const results = await prisma.examAttempt.findMany({
-      where: { subjectId: instructor.subjectId, isCompleted: true },
+      where: {
+        subjectId: instructor.subjectId,
+        isCompleted: true,
+        subject: { stream: instructor.stream },
+        student: { stream: instructor.stream },
+      },
       include: { student: true },
       orderBy: { createdAt: "desc" },
     });

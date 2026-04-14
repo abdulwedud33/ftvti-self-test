@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { instructorApi, adminApi, Question, CreateQuestionData, Instructor, InstructorDashboardData } from "@/lib/api";
+import { instructorApi, adminApi, Question, CreateQuestionData, InstructorDashboardData } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -94,6 +94,9 @@ export default function InstructorQuestionsPage() {
           </h1>
           <p className="text-muted-foreground font-medium">
             Managing questions for <span className="text-primary font-bold">{instructorData?.instructor.subject.name}</span>
+            {" "}(
+            {instructorData?.instructor.stream === "NATURAL_SCIENCE" ? "Natural Science" : "Social Science"}
+            )
           </p>
         </div>
 
@@ -108,7 +111,7 @@ export default function InstructorQuestionsPage() {
               <DialogTitle className="text-2xl font-bold">Add Question to Bank</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleCreate} className="space-y-6 mt-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label className="font-bold">Exam Year</Label>
                   <Input
@@ -125,7 +128,19 @@ export default function InstructorQuestionsPage() {
                   <Label className="font-bold whitespace-nowrap">Subject (Auto-assigned)</Label>
                   <Input value={instructorData?.instructor.subject.name} disabled className="bg-muted rounded-xl border-dashed" />
                 </div>
+                <div className="space-y-2">
+                  <Label className="font-bold whitespace-nowrap">Stream (Auto-assigned)</Label>
+                  <Input
+                    value={instructorData?.instructor.stream === "NATURAL_SCIENCE" ? "Natural Science" : "Social Science"}
+                    disabled
+                    className="bg-muted rounded-xl border-dashed"
+                  />
+                </div>
               </div>
+
+              <p className="text-xs text-muted-foreground">
+                You can only add questions for your assigned subject and stream.
+              </p>
 
               <div className="space-y-2">
                 <Label className="font-bold">Question Text</Label>

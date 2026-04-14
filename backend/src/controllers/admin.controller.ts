@@ -217,12 +217,20 @@ const createQuestionSchema = z.object({
   optionD: z.string().min(1),
   correctAnswer: z.enum(["A", "B", "C", "D"]),
   year: z.number().int().min(2000).max(2100).default(2025),
-  subjectId: z.string().min(1),
+  subjectId: z.string().min(1).optional(),
 });
 
-export const getQuestions = async (_req: Request, res: Response): Promise<void> => {
+export const getQuestions = async (req: Request, res: Response): Promise<void> => {
   try {
+    const where = req.user?.role === "INSTRUCTOR" && req.instructorScope
+      ? {
+          subjectId: req.instructorScope.subjectId,
+          subject: { stream: req.instructorScope.stream },
+        }
+      : undefined;
+
     const questions = await prisma.question.findMany({
+      where,
       include: { subject: true },
       orderBy: [{ year: "desc" }, { createdAt: "desc" }],
     });
@@ -235,8 +243,54 @@ export const getQuestions = async (_req: Request, res: Response): Promise<void> 
 export const createQuestion = async (req: Request, res: Response): Promise<void> => {
   try {
     const data = createQuestionSchema.parse(req.body);
+
+    let subjectId = data.subjectId;
+
+    if (req.user?.role === "INSTRUCTOR") {
+      const scope = req.instructorScope;
+      if (!scope) {
+        res.status(404).json({ error: "Instructor profile not found" });
+        return;
+      }
+
+      if (data.subjectId && data.subjectId !== scope.subjectId) {
+        res.status(403).json({ error: "You can only add questions for your assigned subject" });
+        return;
+      }
+
+      subjectId = scope.subjectId;
+    }
+
+    if (!subjectId) {
+      res.status(400).json({ error: "Subject is required" });
+      return;
+    }
+
+    const subject = await prisma.subject.findUnique({ where: { id: subjectId } });
+    if (!subject) {
+      res.status(400).json({ error: "Invalid subject selected" });
+      return;
+    }
+
+    if (req.user?.role === "INSTRUCTOR") {
+      const scope = req.instructorScope;
+      if (!scope) {
+        res.status(404).json({ error: "Instructor profile not found" });
+        return;
+      }
+
+      if (subject.stream !== scope.stream) {
+        res.status(403).json({ error: "You can only add questions for your assigned stream" });
+        return;
+      }
+    }
+
     const question = await prisma.question.create({
-      data: { ...data, createdBy: req.user!.userId },
+      data: {
+        ...data,
+        subjectId,
+        createdBy: req.user!.userId,
+      },
     });
     res.status(201).json(question);
   } catch (error) {
@@ -250,6 +304,29 @@ export const createQuestion = async (req: Request, res: Response): Promise<void>
 
 export const deleteQuestion = async (req: Request, res: Response): Promise<void> => {
   try {
+    if (req.user?.role === "INSTRUCTOR") {
+      const scope = req.instructorScope;
+      if (!scope) {
+        res.status(404).json({ error: "Instructor profile not found" });
+        return;
+      }
+
+      const question = await prisma.question.findUnique({
+        where: { id: req.params.id },
+        include: { subject: true },
+      });
+
+      if (!question) {
+        res.status(404).json({ error: "Question not found" });
+        return;
+      }
+
+      if (question.subjectId !== scope.subjectId || question.subject?.stream !== scope.stream) {
+        res.status(403).json({ error: "You can only delete questions from your assigned subject and stream" });
+        return;
+      }
+    }
+
     await prisma.question.delete({ where: { id: req.params.id } });
     res.json({ message: "Question deleted" });
   } catch {
@@ -350,9 +427,19 @@ export const updateExamConfig = async (req: Request, res: Response): Promise<voi
 
 // ─── Results & Comments ───────────────────────────────────────────────────────
 
-export const getAllResults = async (_req: Request, res: Response): Promise<void> => {
+export const getAllResults = async (req: Request, res: Response): Promise<void> => {
   try {
+    const where = req.user?.role === "INSTRUCTOR" && req.instructorScope
+      ? {
+          isCompleted: true,
+          subjectId: req.instructorScope.subjectId,
+          subject: { stream: req.instructorScope.stream },
+          student: { stream: req.instructorScope.stream },
+        }
+      : undefined;
+
     const results = await prisma.examAttempt.findMany({
+      where,
       include: {
         student: true,
         subject: true,
