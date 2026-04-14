@@ -20,13 +20,13 @@ export default function StudentsPage() {
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<CreateStudentData>({
     username: "", 
     password: "", 
     fullName: "", 
     studentId: "", 
-    gender: "MALE",
-    stream: "NATURAL_SCIENCE",
+    gender: "MALE" as Gender,
+    stream: "NATURAL_SCIENCE" as Stream,
   });
 
   const fetchData = async () => {
@@ -50,7 +50,7 @@ export default function StudentsPage() {
       await adminApi.createStudent(form);
       toast({ title: "Success", description: "Student created successfully" });
       setOpen(false);
-      setForm({ username: "", password: "", fullName: "", studentId: "", gender: "MALE", stream: "NATURAL_SCIENCE" });
+      setForm({ username: "", password: "", fullName: "", studentId: "", gender: "MALE" as Gender, stream: "NATURAL_SCIENCE" as Stream });
       fetchData();
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
