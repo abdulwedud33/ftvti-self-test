@@ -13,6 +13,7 @@ interface User {
     fullName: string;
     studentId: string;
     gender: "MALE" | "FEMALE";
+    stream: "NATURAL_SCIENCE" | "SOCIAL_SCIENCE";
   } | null;
   instructor?: {
     id: string;
