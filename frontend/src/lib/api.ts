@@ -48,6 +48,11 @@ export const authApi = {
     apiFetch("/auth/login", { method: "POST", body: { username, password } }),
   logout: () => apiFetch("/auth/logout", { method: "POST" }),
   me: () => apiFetch("/auth/me"),
+  updateProfile: (data: UpdateProfileData) =>
+    apiFetch<{ message: string; user: { id: string; username: string; role: Role } }>("/auth/profile", {
+      method: "PATCH",
+      body: data,
+    }),
 };
 
 export const adminApi = {
@@ -301,4 +306,9 @@ export interface CreateQuestionData {
   correctAnswer: "A" | "B" | "C" | "D";
   year: number;
   subjectId: string;
+}
+
+export interface UpdateProfileData {
+  username?: string;
+  password?: string;
 }

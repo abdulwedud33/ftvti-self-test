@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import {
   LayoutDashboard, Users, BookOpen, Calendar, BarChart2,
   MessageSquare, Settings, LogOut, GraduationCap, Menu, X,
-  UserCheck, Bookmark
+  UserCheck, Bookmark, UserCog
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -22,6 +22,7 @@ const navItems = [
   { href: "/admin/results", label: "Results", icon: BarChart2 },
   { href: "/admin/comments", label: "Feedback", icon: MessageSquare },
   { href: "/admin/exam-config", label: "Exam Settings", icon: Settings },
+  { href: "/profile", label: "Profile", icon: UserCog, exact: true },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

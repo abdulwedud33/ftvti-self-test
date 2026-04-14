@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, ClipboardList, Calendar, MessageSquare, LogOut, GraduationCap, Menu, X, Trophy } from "lucide-react";
+import { LayoutDashboard, ClipboardList, Calendar, MessageSquare, LogOut, GraduationCap, Menu, X, Trophy, UserCog } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -14,6 +14,7 @@ const navItems = [
   { href: "/student/results", label: "My Results", icon: Trophy },
   { href: "/student/events", label: "Events", icon: Calendar },
   { href: "/student/feedback", label: "Feedback", icon: MessageSquare },
+  { href: "/profile", label: "Profile", icon: UserCog, exact: true },
 ];
 
 export default function StudentLayout({ children }: { children: React.ReactNode }) {

@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import {
   LayoutDashboard, BookOpen, BarChart2, LogOut, GraduationCap, Menu, X,
+  UserCog,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -14,6 +15,7 @@ const navItems = [
   { href: "/instructor", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { href: "/instructor/questions", label: "My Questions", icon: BookOpen },
   { href: "/instructor/results", label: "Subject Results", icon: BarChart2 },
+  { href: "/profile", label: "Profile", icon: UserCog, exact: true },
 ];
 
 export default function InstructorLayout({ children }: { children: React.ReactNode }) {
@@ -56,7 +58,7 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
           </div>
           <div>
             <p className="font-extrabold text-sm leading-none tracking-tight">FTVTI Instructor</p>
-            <p className="text-[10px] uppercase font-bold text-muted-foreground mt-1 tracking-widest text-primary">Portal</p>
+            <p className="text-[10px] uppercase font-bold mt-1 tracking-widest text-primary">Portal</p>
           </div>
         </div>
 
