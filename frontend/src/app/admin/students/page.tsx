@@ -20,6 +20,7 @@ export default function StudentsPage() {
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [form, setForm] = useState({
     username: "", 
     password: "", 
     fullName: "", 
