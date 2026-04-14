@@ -75,8 +75,8 @@ export default function StudentDashboard() {
               <p className="font-semibold font-mono">{s?.studentId ?? "—"}</p>
             </div>
             <div>
-              <span className="text-indigo-300">Department</span>
-              <p className="font-semibold">{s?.department?.name ?? "—"}</p>
+              <span className="text-indigo-300">Gender</span>
+              <p className="font-semibold">{s?.gender ?? "—"}</p>
             </div>
           </div>
         </div>

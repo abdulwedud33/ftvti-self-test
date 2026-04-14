@@ -6,15 +6,6 @@ const prisma = new PrismaClient();
 async function main() {
   console.log("🌱 Seeding database...");
 
-  // Create default departments
-  const departments = ["Software Engineering", "Electrical Technology", "Civil Works Technology", "Accounting & Finance"];
-  for (const name of departments) {
-    await prisma.department.upsert({
-      where: { name },
-      update: {},
-      create: { name },
-    });
-  }
 
   // Create admin user
   const hashedPassword = await bcrypt.hash("admin123", 10);

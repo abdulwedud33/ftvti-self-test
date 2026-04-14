@@ -112,7 +112,7 @@ export default function QuestionsPage() {
                     <SelectTrigger className="rounded-xl">
                       <SelectValue placeholder="Select subject" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-white dark:bg-zinc-950 border">
                       {subjects.map((s) => (
                         <SelectItem key={s.id} value={s.id}>
                           {s.name} ({s.stream === "NATURAL_SCIENCE" ? "NAT" : "SOC"})

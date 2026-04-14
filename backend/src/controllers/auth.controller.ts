@@ -42,7 +42,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     if (user.role === "STUDENT") {
       studentData = await prisma.student.findUnique({
         where: { userId: user.id },
-        include: { department: true },
+
       });
     }
 
@@ -90,7 +90,7 @@ export const me = async (req: Request, res: Response): Promise<void> => {
     if (user.role === "STUDENT") {
       studentData = await prisma.student.findUnique({
         where: { userId: user.id },
-        include: { department: true },
+
       });
     }
 

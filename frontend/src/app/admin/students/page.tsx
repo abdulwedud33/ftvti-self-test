@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { adminApi, Student, Department, CreateStudentData, Stream } from "@/lib/api";
+import { adminApi, Student, CreateStudentData, Stream, Gender } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,25 +16,22 @@ import { Badge } from "@/components/ui/badge";
 export default function StudentsPage() {
   const { toast } = useToast();
   const [students, setStudents] = useState<Student[]>([]);
-  const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [form, setForm] = useState<CreateStudentData>({
     username: "", 
     password: "", 
     fullName: "", 
     studentId: "", 
-    departmentId: "",
+    gender: "MALE",
     stream: "NATURAL_SCIENCE",
   });
 
   const fetchData = async () => {
     try {
-      const [s, d] = await Promise.all([adminApi.students(), adminApi.departments()]);
+      const s = await adminApi.students();
       setStudents(s);
-      setDepartments(d);
     } catch {
       toast({ title: "Error", description: "Failed to load students", variant: "destructive" });
     } finally {
@@ -48,11 +45,11 @@ export default function StudentsPage() {
     e.preventDefault();
     setSubmitting(true);
     try {
-      if (!form.departmentId) throw new Error("Please select a department");
+      if (!form.gender) throw new Error("Please select gender");
       await adminApi.createStudent(form);
       toast({ title: "Success", description: "Student created successfully" });
       setOpen(false);
-      setForm({ username: "", password: "", fullName: "", studentId: "", departmentId: "", stream: "NATURAL_SCIENCE" });
+      setForm({ username: "", password: "", fullName: "", studentId: "", gender: "MALE", stream: "NATURAL_SCIENCE" });
       fetchData();
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -75,7 +72,7 @@ export default function StudentsPage() {
   const filtered = students.filter((s) =>
     s.fullName.toLowerCase().includes(search.toLowerCase()) ||
     s.studentId.toLowerCase().includes(search.toLowerCase()) ||
-    s.department.name.toLowerCase().includes(search.toLowerCase()) ||
+    (s.gender && s.gender.toLowerCase().includes(search.toLowerCase())) ||
     s.stream.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -121,25 +118,24 @@ export default function StudentsPage() {
                     <SelectTrigger>
                       <SelectValue placeholder="Select stream" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-white dark:bg-zinc-950 border">
                       <SelectItem value="NATURAL_SCIENCE">Natural Science</SelectItem>
                       <SelectItem value="SOCIAL_SCIENCE">Social Science</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Department</Label>
+                  <Label>Gender</Label>
                   <Select 
-                    value={form.departmentId} 
-                    onValueChange={(v) => setForm({ ...form, departmentId: v })}
+                    value={form.gender} 
+                    onValueChange={(v: Gender) => setForm({ ...form, gender: v })}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select department" />
+                      <SelectValue placeholder="Select gender" />
                     </SelectTrigger>
-                    <SelectContent>
-                      {departments.map((d) => (
-                        <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
-                      ))}
+                    <SelectContent className="bg-white dark:bg-zinc-950 border">
+                      <SelectItem value="MALE">Male</SelectItem>
+                      <SelectItem value="FEMALE">Female</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -189,7 +185,7 @@ export default function StudentsPage() {
                     <th className="px-6 py-4 font-semibold uppercase tracking-wider text-[10px]">Full Name</th>
                     <th className="px-6 py-4 font-semibold uppercase tracking-wider text-[10px]">Student ID</th>
                     <th className="px-6 py-4 font-semibold uppercase tracking-wider text-[10px]">Stream</th>
-                    <th className="px-6 py-4 font-semibold uppercase tracking-wider text-[10px]">Department</th>
+                    <th className="px-6 py-4 font-semibold uppercase tracking-wider text-[10px]">Gender</th>
                     <th className="px-6 py-4 font-semibold uppercase tracking-wider text-[10px] w-16 text-right">Actions</th>
                   </tr>
                 </thead>
@@ -226,7 +222,7 @@ export default function StudentsPage() {
                         )}
                       </td>
                       <td className="px-6 py-4">
-                        <span className="text-muted-foreground font-medium">{s.department.name}</span>
+                        <span className="text-muted-foreground font-medium">{s.gender}</span>
                       </td>
                       <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
                         <Link href={`/admin/students/${s.id}`}>

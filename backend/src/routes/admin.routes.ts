@@ -22,8 +22,6 @@ router.get("/subjects", adminController.getSubjects);
 router.post("/subjects", adminController.createSubject);
 router.delete("/subjects/:id", adminController.deleteSubject);
 
-// Departments
-router.get("/departments", adminController.getDepartments);
 
 // Questions
 router.get("/questions", adminController.getQuestions);

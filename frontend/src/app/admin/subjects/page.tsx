@@ -109,7 +109,7 @@ export default function SubjectsPage() {
                   <SelectTrigger className="rounded-xl">
                     <SelectValue placeholder="Select stream" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-white dark:bg-zinc-950 border">
                     <SelectItem value="NATURAL_SCIENCE">Natural Science</SelectItem>
                     <SelectItem value="SOCIAL_SCIENCE">Social Science</SelectItem>
                   </SelectContent>

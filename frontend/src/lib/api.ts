@@ -52,7 +52,6 @@ export const authApi = {
 
 export const adminApi = {
   stats: () => apiFetch<DashboardStats>("/admin/dashboard-stats"),
-  departments: () => apiFetch<Department[]>("/admin/departments"),
   
   // Students
   students: () => apiFetch<Student[]>("/admin/students"),
@@ -131,7 +130,7 @@ export const studentApi = {
 export type Role = "ADMIN" | "STUDENT" | "INSTRUCTOR";
 export type Stream = "NATURAL_SCIENCE" | "SOCIAL_SCIENCE";
 
-export interface Department { id: string; name: string; }
+export type Gender = "MALE" | "FEMALE";
 
 export interface Subject {
   id: string;
@@ -152,8 +151,7 @@ export interface Student {
   userId: string;
   fullName: string;
   studentId: string;
-  departmentId: string;
-  department: Department;
+  gender: Gender;
   stream: Stream;
   user?: { username: string; createdAt: string };
 }
@@ -276,7 +274,7 @@ export interface CreateStudentData {
   password: string;
   fullName: string;
   studentId: string;
-  departmentId: string;
+  gender: Gender;
   stream: Stream;
 }
 

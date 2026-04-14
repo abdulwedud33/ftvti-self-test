@@ -160,8 +160,8 @@ export default function StudentDetailPage() {
                   </Badge>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Department</p>
-                  <p className="font-semibold">{profile.student.department.name}</p>
+                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Gender</p>
+                  <p className="font-semibold">{profile.student.gender}</p>
                 </div>
                 <div className="space-y-1 sm:col-span-2">
                   <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Contact</p>

@@ -93,7 +93,7 @@ export default function ResultsPage() {
                               </div>
                               <div>
                                  <p className="font-bold text-slate-800">{r.student?.fullName || "Student Removed"}</p>
-                                 <p className="text-[10px] font-bold text-slate-400 uppercase">{r.student?.department?.name || "No Dept"}</p>
+                                 <p className="text-[10px] font-bold text-slate-400 uppercase">Gender: {r.student?.gender || "Unknown"}</p>
                               </div>
                            </div>
                         </td>

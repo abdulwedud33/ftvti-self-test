@@ -6,7 +6,7 @@ export const getMyProfile = async (req: Request, res: Response): Promise<void> =
   try {
     const student = await prisma.student.findUnique({
       where: { userId: req.user!.userId },
-      include: { department: true, user: { select: { username: true, createdAt: true } } },
+      include: { user: { select: { username: true, createdAt: true } } },
     });
     if (!student) { res.status(404).json({ error: "Student profile not found" }); return; }
     res.json(student);

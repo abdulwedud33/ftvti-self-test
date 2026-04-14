@@ -61,7 +61,7 @@ export default function CommentsPage() {
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="font-medium text-sm">{c.student?.fullName}</p>
                     <span className="text-xs text-muted-foreground px-1.5 py-0.5 bg-secondary rounded">
-                      {c.student?.department?.name}
+                      Gender: {c.student?.gender}
                     </span>
                     <span className="text-xs text-muted-foreground ml-auto">{dayjs(c.createdAt).fromNow()}</span>
                   </div>

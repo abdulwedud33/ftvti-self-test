@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import prisma from "../utils/prisma";
-import { Role, Stream } from "@prisma/client";
+import { Role, Stream, Gender } from "@prisma/client";
 
 // ─── Students ─────────────────────────────────────────────────────────────────
 
@@ -11,7 +11,7 @@ const createStudentSchema = z.object({
   password: z.string().min(6),
   fullName: z.string().min(2),
   studentId: z.string().min(3),
-  departmentId: z.string().min(1),
+  gender: z.nativeEnum(Gender),
   stream: z.nativeEnum(Stream),
 });
 
@@ -20,7 +20,6 @@ export const getStudents = async (_req: Request, res: Response): Promise<void> =
     const students = await prisma.student.findMany({
       include: {
         user: { select: { username: true, role: true, createdAt: true } },
-        department: true,
       },
       orderBy: { user: { createdAt: "desc" } },
     });
@@ -37,7 +36,6 @@ export const getStudentDetail = async (req: Request, res: Response): Promise<voi
       where: { id },
       include: {
         user: { select: { username: true, createdAt: true } },
-        department: true,
         examAttempts: {
           include: { subject: true },
           orderBy: { createdAt: "desc" },
@@ -75,10 +73,9 @@ export const createStudent = async (req: Request, res: Response): Promise<void> 
           userId: user.id,
           fullName: data.fullName,
           studentId: data.studentId,
-          departmentId: data.departmentId,
+          gender: data.gender,
           stream: data.stream,
         },
-        include: { department: true },
       });
       return student;
     });
@@ -357,7 +354,7 @@ export const getAllResults = async (_req: Request, res: Response): Promise<void>
   try {
     const results = await prisma.examAttempt.findMany({
       include: {
-        student: { include: { department: true } },
+        student: true,
         subject: true,
       },
       orderBy: { createdAt: "desc" },
@@ -371,7 +368,7 @@ export const getAllResults = async (_req: Request, res: Response): Promise<void>
 export const getAllComments = async (_req: Request, res: Response): Promise<void> => {
   try {
     const comments = await prisma.comment.findMany({
-      include: { student: { include: { department: true } } },
+      include: { student: true },
       orderBy: { createdAt: "desc" },
     });
     res.json(comments);
@@ -389,14 +386,7 @@ export const deleteComment = async (req: Request, res: Response): Promise<void> 
   }
 };
 
-export const getDepartments = async (_req: Request, res: Response): Promise<void> => {
-  try {
-    const departments = await prisma.department.findMany({ orderBy: { name: "asc" } });
-    res.json(departments);
-  } catch {
-    res.status(500).json({ error: "Failed to fetch departments" });
-  }
-};
+
 
 export const getDashboardStats = async (_req: Request, res: Response): Promise<void> => {
   try {

@@ -20,6 +20,11 @@ enum Stream {
   SOCIAL_SCIENCE
 }
 
+enum Gender {
+  MALE
+  FEMALE
+}
+
 model User {
   id         String      @id @default(cuid())
   username   String      @unique
@@ -37,8 +42,7 @@ model Student {
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   fullName     String
   studentId    String        @unique
-  departmentId String
-  department   Department    @relation(fields: [departmentId], references: [id])
+  gender       Gender
   stream       Stream        @default(NATURAL_SCIENCE)
   examAttempts ExamAttempt[]
   comments     Comment[]
@@ -62,11 +66,7 @@ model Subject {
   examAttempts ExamAttempt[]
 }
 
-model Department {
-  id       String    @id @default(cuid())
-  name     String    @unique
-  students Student[]
-}
+
 
 model Question {
   id            String   @id @default(cuid())

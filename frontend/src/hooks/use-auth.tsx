@@ -12,7 +12,7 @@ interface User {
     id: string;
     fullName: string;
     studentId: string;
-    department: { id: string; name: string };
+    gender: "MALE" | "FEMALE";
   } | null;
   instructor?: {
     id: string;
