@@ -18,7 +18,13 @@ const createStudentSchema = z.object({
 
 export const getStudents = async (_req: Request, res: Response): Promise<void> => {
   try {
+    const stream =
+      typeof _req.query.stream === "string" && Object.values(Stream).includes(_req.query.stream as Stream)
+        ? (_req.query.stream as Stream)
+        : undefined;
+
     const students = await prisma.student.findMany({
+      where: stream ? { stream } : undefined,
       include: {
         user: { select: { username: true, role: true, createdAt: true } },
       },
@@ -103,7 +109,13 @@ const createInstructorSchema = z.object({
 
 export const getInstructors = async (_req: Request, res: Response): Promise<void> => {
   try {
+    const stream =
+      typeof _req.query.stream === "string" && Object.values(Stream).includes(_req.query.stream as Stream)
+        ? (_req.query.stream as Stream)
+        : undefined;
+
     const instructors = await prisma.instructor.findMany({
+      where: stream ? { stream } : undefined,
       include: {
         user: { select: { username: true, createdAt: true } },
         subject: true,

@@ -59,7 +59,12 @@ export const adminApi = {
   stats: () => apiFetch<DashboardStats>("/admin/dashboard-stats"),
   
   // Students
-  students: () => apiFetch<Student[]>("/admin/students"),
+  students: (params?: { stream?: Stream }) => {
+    const search = new URLSearchParams();
+    if (params?.stream) search.set("stream", params.stream);
+    const suffix = search.toString() ? `?${search.toString()}` : "";
+    return apiFetch<Student[]>(`/admin/students${suffix}`);
+  },
   studentDetail: (id: string) => apiFetch<StudentProfile>(`/admin/students/${id}`),
   createStudent: (data: CreateStudentData) =>
     apiFetch("/admin/students", { method: "POST", body: data }),
@@ -67,7 +72,12 @@ export const adminApi = {
     apiFetch(`/admin/students/${id}`, { method: "DELETE" }),
 
   // Instructors
-  instructors: () => apiFetch<Instructor[]>("/admin/instructors"),
+  instructors: (params?: { stream?: Stream }) => {
+    const search = new URLSearchParams();
+    if (params?.stream) search.set("stream", params.stream);
+    const suffix = search.toString() ? `?${search.toString()}` : "";
+    return apiFetch<Instructor[]>(`/admin/instructors${suffix}`);
+  },
   createInstructor: (data: CreateInstructorData) =>
     apiFetch("/admin/instructors", { method: "POST", body: data }),
   deleteInstructor: (id: string) =>
