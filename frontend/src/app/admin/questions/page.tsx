@@ -247,7 +247,9 @@ export default function QuestionsPage() {
     if (viewLevel === "questions") {
       setViewLevel("subjects");
       setSelectedSubjectId(null);
-      void selectedStream && loadStreamQuestions(selectedStream);
+      if (selectedStream) {
+        void loadStreamQuestions(selectedStream);
+      }
       return;
     }
 

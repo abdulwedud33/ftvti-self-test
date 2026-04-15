@@ -223,7 +223,10 @@ const createQuestionSchema = z.object({
 
 export const getQuestions = async (req: Request, res: Response): Promise<void> => {
   try {
-    const stream = typeof req.query.stream === "string" ? req.query.stream : undefined;
+    const stream =
+      typeof req.query.stream === "string" && Object.values(Stream).includes(req.query.stream as Stream)
+        ? (req.query.stream as Stream)
+        : undefined;
     const subjectId = typeof req.query.subjectId === "string" ? req.query.subjectId : undefined;
 
     const where: Prisma.QuestionWhereInput = {};
