@@ -81,9 +81,17 @@ export const adminApi = {
     apiFetch(`/admin/subjects/${id}`, { method: "DELETE" }),
 
   // Questions
-  questions: () => apiFetch<Question[]>("/admin/questions"),
+  questions: (params?: { stream?: Stream; subjectId?: string }) => {
+    const search = new URLSearchParams();
+    if (params?.stream) search.set("stream", params.stream);
+    if (params?.subjectId) search.set("subjectId", params.subjectId);
+    const suffix = search.toString() ? `?${search.toString()}` : "";
+    return apiFetch<Question[]>(`/admin/questions${suffix}`);
+  },
   createQuestion: (data: CreateQuestionData) =>
     apiFetch("/admin/questions", { method: "POST", body: data }),
+  updateQuestion: (id: string, data: CreateQuestionData) =>
+    apiFetch<Question>(`/admin/questions/${id}`, { method: "PUT", body: data }),
   deleteQuestion: (id: string) =>
     apiFetch(`/admin/questions/${id}`, { method: "DELETE" }),
   questionYears: () => apiFetch<number[]>("/admin/questions/years"),

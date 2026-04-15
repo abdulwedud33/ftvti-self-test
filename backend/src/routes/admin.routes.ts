@@ -26,6 +26,7 @@ router.delete("/subjects/:id", requireAdmin, adminController.deleteSubject);
 // Questions
 router.get("/questions", requireAdminOrInstructor, attachInstructorScope, adminController.getQuestions);
 router.post("/questions", requireAdminOrInstructor, attachInstructorScope, adminController.createQuestion);
+router.put("/questions/:id", requireAdmin, adminController.updateQuestion);
 router.delete("/questions/:id", requireAdminOrInstructor, attachInstructorScope, adminController.deleteQuestion);
 router.get("/questions/years", requireAdmin, adminController.getQuestionYears);
 

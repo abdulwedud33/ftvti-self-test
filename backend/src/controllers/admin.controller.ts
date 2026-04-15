@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 import prisma from "../utils/prisma";
 import { Role, Stream, Gender } from "@prisma/client";
 
@@ -222,15 +223,21 @@ const createQuestionSchema = z.object({
 
 export const getQuestions = async (req: Request, res: Response): Promise<void> => {
   try {
-    const where = req.user?.role === "INSTRUCTOR" && req.instructorScope
-      ? {
-          subjectId: req.instructorScope.subjectId,
-          subject: { stream: req.instructorScope.stream },
-        }
-      : undefined;
+    const stream = typeof req.query.stream === "string" ? req.query.stream : undefined;
+    const subjectId = typeof req.query.subjectId === "string" ? req.query.subjectId : undefined;
+
+    const where: Prisma.QuestionWhereInput = {};
+
+    if (req.user?.role === "INSTRUCTOR" && req.instructorScope) {
+      where.subjectId = req.instructorScope.subjectId;
+      where.subject = { stream: req.instructorScope.stream };
+    } else {
+      if (stream) where.subject = { stream };
+      if (subjectId) where.subjectId = subjectId;
+    }
 
     const questions = await prisma.question.findMany({
-      where,
+      where: Object.keys(where).length > 0 ? where : undefined,
       include: { subject: true },
       orderBy: [{ year: "desc" }, { createdAt: "desc" }],
     });
@@ -299,6 +306,61 @@ export const createQuestion = async (req: Request, res: Response): Promise<void>
       return;
     }
     res.status(500).json({ error: "Failed to create question" });
+  }
+};
+
+const updateQuestionSchema = z.object({
+  questionText: z.string().min(5),
+  optionA: z.string().min(1),
+  optionB: z.string().min(1),
+  optionC: z.string().min(1),
+  optionD: z.string().min(1),
+  correctAnswer: z.enum(["A", "B", "C", "D"]),
+  year: z.number().int().min(2000).max(2100),
+  subjectId: z.string().min(1),
+});
+
+export const updateQuestion = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const data = updateQuestionSchema.parse(req.body);
+    const question = await prisma.question.findUnique({
+      where: { id: req.params.id },
+      include: { subject: true },
+    });
+
+    if (!question) {
+      res.status(404).json({ error: "Question not found" });
+      return;
+    }
+
+    const subject = await prisma.subject.findUnique({ where: { id: data.subjectId } });
+    if (!subject) {
+      res.status(400).json({ error: "Invalid subject selected" });
+      return;
+    }
+
+    const updated = await prisma.question.update({
+      where: { id: req.params.id },
+      data: {
+        questionText: data.questionText,
+        optionA: data.optionA,
+        optionB: data.optionB,
+        optionC: data.optionC,
+        optionD: data.optionD,
+        correctAnswer: data.correctAnswer,
+        year: data.year,
+        subjectId: data.subjectId,
+      },
+      include: { subject: true },
+    });
+
+    res.json(updated);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ error: error.errors[0].message });
+      return;
+    }
+    res.status(500).json({ error: "Failed to update question" });
   }
 };
 
