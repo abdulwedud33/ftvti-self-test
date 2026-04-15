@@ -85,7 +85,7 @@ export const adminApi = {
 
   // Subjects
   subjects: () => apiFetch<Subject[]>("/admin/subjects"),
-  createSubject: (data: { name: string; stream: Stream }) =>
+  createSubject: (data: { name: string; type: SubjectType; stream?: Stream }) =>
     apiFetch("/admin/subjects", { method: "POST", body: data }),
   deleteSubject: (id: string) =>
     apiFetch(`/admin/subjects/${id}`, { method: "DELETE" }),
@@ -152,13 +152,15 @@ export const studentApi = {
 
 export type Role = "ADMIN" | "STUDENT" | "INSTRUCTOR";
 export type Stream = "NATURAL_SCIENCE" | "SOCIAL_SCIENCE";
+export type SubjectType = "STREAM_SPECIFIC" | "SHARED";
 
 export type Gender = "MALE" | "FEMALE";
 
 export interface Subject {
   id: string;
   name: string;
-  stream: Stream;
+  stream: Stream | null;
+  type: SubjectType;
 }
 
 export interface User {

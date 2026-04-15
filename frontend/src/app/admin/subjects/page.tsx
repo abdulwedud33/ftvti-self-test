@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { adminApi, Subject, Stream } from "@/lib/api";
+import { adminApi, Subject, Stream, SubjectType } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,8 +19,9 @@ export default function SubjectsPage() {
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [form, setForm] = useState<{ name: string; stream: Stream }>({
+  const [form, setForm] = useState<{ name: string; type: SubjectType; stream?: Stream }>({
     name: "",
+    type: "STREAM_SPECIFIC",
     stream: "NATURAL_SCIENCE",
   });
 
@@ -41,10 +42,15 @@ export default function SubjectsPage() {
     e.preventDefault();
     setSubmitting(true);
     try {
-      await adminApi.createSubject(form);
+      const payload =
+        form.type === "SHARED"
+          ? { name: form.name, type: form.type }
+          : { name: form.name, type: form.type, stream: form.stream };
+
+      await adminApi.createSubject(payload);
       toast({ title: "Success", description: "Subject created successfully" });
       setOpen(false);
-      setForm({ name: "", stream: "NATURAL_SCIENCE" });
+      setForm({ name: "", type: "STREAM_SPECIFIC", stream: "NATURAL_SCIENCE" });
       fetchSubjects();
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -66,7 +72,8 @@ export default function SubjectsPage() {
 
   const filtered = subjects.filter((s) =>
     s.name.toLowerCase().includes(search.toLowerCase()) ||
-    s.stream.toLowerCase().includes(search.toLowerCase())
+    (s.stream ?? "").toLowerCase().includes(search.toLowerCase()) ||
+    (s.type === "SHARED" ? "shared" : "stream specific").includes(search.toLowerCase())
   );
 
   return (
@@ -101,20 +108,43 @@ export default function SubjectsPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label className="font-bold">Stream</Label>
-                <Select 
-                  value={form.stream} 
-                  onValueChange={(v: Stream) => setForm({ ...form, stream: v })}
+                <Label className="font-bold">Subject Type</Label>
+                <Select
+                  value={form.type}
+                  onValueChange={(v: SubjectType) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      type: v,
+                      stream: v === "SHARED" ? undefined : prev.stream ?? "NATURAL_SCIENCE",
+                    }))
+                  }
                 >
                   <SelectTrigger className="rounded-xl">
-                    <SelectValue placeholder="Select stream" />
+                    <SelectValue placeholder="Select subject type" />
                   </SelectTrigger>
                   <SelectContent className="bg-white dark:bg-zinc-950 border">
-                    <SelectItem value="NATURAL_SCIENCE">Natural Science</SelectItem>
-                    <SelectItem value="SOCIAL_SCIENCE">Social Science</SelectItem>
+                    <SelectItem value="STREAM_SPECIFIC">Stream Specific</SelectItem>
+                    <SelectItem value="SHARED">Shared</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+              {form.type === "STREAM_SPECIFIC" && (
+                <div className="space-y-2">
+                  <Label className="font-bold">Stream</Label>
+                  <Select
+                    value={form.stream}
+                    onValueChange={(v: Stream) => setForm({ ...form, stream: v })}
+                  >
+                    <SelectTrigger className="rounded-xl">
+                      <SelectValue placeholder="Select stream" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white dark:bg-zinc-950 border">
+                      <SelectItem value="NATURAL_SCIENCE">Natural Science</SelectItem>
+                      <SelectItem value="SOCIAL_SCIENCE">Social Science</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <div className="flex gap-2 pt-4">
                 <Button type="button" variant="ghost" className="flex-1 rounded-xl" onClick={() => setOpen(false)}>Cancel</Button>
                 <Button type="submit" className="flex-1 rounded-xl" disabled={submitting}>
@@ -158,7 +188,11 @@ export default function SubjectsPage() {
                     <div>
                       <h3 className="text-xl font-bold tracking-tight">{s.name}</h3>
                       <div className="mt-2">
-                        {s.stream === "NATURAL_SCIENCE" ? (
+                        {s.type === "SHARED" ? (
+                          <Badge variant="secondary" className="bg-amber-50 text-amber-700 border-amber-100 flex gap-1 items-center px-3">
+                            Shared
+                          </Badge>
+                        ) : s.stream === "NATURAL_SCIENCE" ? (
                           <Badge variant="secondary" className="bg-emerald-50 text-emerald-600 border- emerald-100 flex gap-1 items-center px-3">
                             <FlaskConical className="w-3 h-3" /> Natural Science
                           </Badge>

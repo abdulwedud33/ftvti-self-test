@@ -20,6 +20,11 @@ enum Stream {
   SOCIAL_SCIENCE
 }
 
+enum SubjectType {
+  STREAM_SPECIFIC
+  SHARED
+}
+
 enum Gender {
   MALE
   FEMALE
@@ -60,7 +65,8 @@ model Instructor {
 model Subject {
   id           String        @id @default(cuid())
   name         String
-  stream       Stream
+  stream       Stream?
+  type         SubjectType   @default(STREAM_SPECIFIC)
   questions    Question[]
   instructors  Instructor[]
   examAttempts ExamAttempt[]

@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import prisma from "../utils/prisma";
-import { Role, Stream, Gender } from "@prisma/client";
+import { Role, Stream, Gender, SubjectType } from "@prisma/client";
 
 // ─── Students ─────────────────────────────────────────────────────────────────
 
@@ -56,7 +56,12 @@ export const getStudentDetail = async (req: Request, res: Response): Promise<voi
     }
 
     const subjects = await prisma.subject.findMany({
-      where: { stream: student.stream },
+      where: {
+        OR: [
+          { type: SubjectType.SHARED },
+          { type: SubjectType.STREAM_SPECIFIC, stream: student.stream },
+        ],
+      },
       orderBy: { name: "asc" },
     });
 
@@ -131,6 +136,17 @@ export const getInstructors = async (_req: Request, res: Response): Promise<void
 export const createInstructor = async (req: Request, res: Response): Promise<void> => {
   try {
     const data = createInstructorSchema.parse(req.body);
+    const subject = await prisma.subject.findUnique({ where: { id: data.subjectId } });
+    if (!subject) {
+      res.status(404).json({ error: "Subject not found" });
+      return;
+    }
+
+    if (subject.type === SubjectType.STREAM_SPECIFIC && subject.stream !== data.stream) {
+      res.status(400).json({ error: "Selected subject does not match the instructor stream" });
+      return;
+    }
+
     const hashedPassword = await bcrypt.hash(data.password, 10);
 
     const result = await prisma.$transaction(async (tx) => {
@@ -179,15 +195,25 @@ export const deleteInstructor = async (req: Request, res: Response): Promise<voi
 
 // ─── Subjects ─────────────────────────────────────────────────────────────────
 
-const createSubjectSchema = z.object({
-  name: z.string().min(2),
-  stream: z.nativeEnum(Stream),
-});
+const createSubjectSchema = z
+  .object({
+    name: z.string().min(2),
+    type: z.nativeEnum(SubjectType).default(SubjectType.STREAM_SPECIFIC),
+    stream: z.nativeEnum(Stream).optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.type === SubjectType.STREAM_SPECIFIC && !data.stream) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Stream is required for stream-specific subjects" });
+    }
+    if (data.type === SubjectType.SHARED && data.stream !== undefined) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Shared subjects must not have a stream" });
+    }
+  });
 
 export const getSubjects = async (_req: Request, res: Response): Promise<void> => {
   try {
     const subjects = await prisma.subject.findMany({
-      orderBy: [{ stream: "asc" }, { name: "asc" }],
+      orderBy: [{ type: "asc" }, { stream: "asc" }, { name: "asc" }],
     });
     res.json(subjects);
   } catch {
@@ -199,7 +225,11 @@ export const createSubject = async (req: Request, res: Response): Promise<void> 
   try {
     const data = createSubjectSchema.parse(req.body);
     const subject = await prisma.subject.create({
-      data,
+      data: {
+        name: data.name,
+        type: data.type,
+        stream: data.type === SubjectType.SHARED ? null : data.stream,
+      },
     });
     res.status(201).json(subject);
   } catch (error) {
@@ -245,9 +275,13 @@ export const getQuestions = async (req: Request, res: Response): Promise<void> =
 
     if (req.user?.role === "INSTRUCTOR" && req.instructorScope) {
       where.subjectId = req.instructorScope.subjectId;
-      where.subject = { stream: req.instructorScope.stream };
     } else {
-      if (stream) where.subject = { stream };
+      if (stream) {
+        where.OR = [
+          { subject: { type: SubjectType.SHARED } },
+          { subject: { type: SubjectType.STREAM_SPECIFIC, stream } },
+        ];
+      }
       if (subjectId) where.subjectId = subjectId;
     }
 
@@ -301,7 +335,7 @@ export const createQuestion = async (req: Request, res: Response): Promise<void>
         return;
       }
 
-      if (subject.stream !== scope.stream) {
+      if (subject.type === SubjectType.STREAM_SPECIFIC && subject.stream !== scope.stream) {
         res.status(403).json({ error: "You can only add questions for your assigned stream" });
         return;
       }
@@ -398,7 +432,7 @@ export const deleteQuestion = async (req: Request, res: Response): Promise<void>
         return;
       }
 
-      if (question.subjectId !== scope.subjectId || question.subject?.stream !== scope.stream) {
+      if (question.subjectId !== scope.subjectId) {
         res.status(403).json({ error: "You can only delete questions from your assigned subject and stream" });
         return;
       }
@@ -506,14 +540,17 @@ export const updateExamConfig = async (req: Request, res: Response): Promise<voi
 
 export const getAllResults = async (req: Request, res: Response): Promise<void> => {
   try {
-    const where = req.user?.role === "INSTRUCTOR" && req.instructorScope
-      ? {
-          isCompleted: true,
-          subjectId: req.instructorScope.subjectId,
-          subject: { stream: req.instructorScope.stream },
-          student: { stream: req.instructorScope.stream },
-        }
-      : undefined;
+    let where: Prisma.ExamAttemptWhereInput | undefined;
+    if (req.user?.role === "INSTRUCTOR" && req.instructorScope) {
+      where = {
+        isCompleted: true,
+        subjectId: req.instructorScope.subjectId,
+      };
+
+      if (req.instructorScope.subjectType === SubjectType.STREAM_SPECIFIC) {
+        where.student = { stream: req.instructorScope.stream };
+      }
+    }
 
     const results = await prisma.examAttempt.findMany({
       where,

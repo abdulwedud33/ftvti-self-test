@@ -70,7 +70,9 @@ export default function InstructorsPage() {
   useEffect(() => { fetchData(); }, []);
 
   const activeInstructors = instructorsByStream[activeStream];
-  const filteredSubjects = subjects.filter((subject) => subject.stream === form.stream);
+  const filteredSubjects = subjects.filter(
+    (subject) => subject.type === "SHARED" || subject.stream === form.stream
+  );
 
   const tabCounts = useMemo(
     () => ({
@@ -84,7 +86,7 @@ export default function InstructorsPage() {
     instructorsByStream[stream].filter((instructor) =>
       instructor.user?.username.toLowerCase().includes(search.toLowerCase()) ||
       instructor.subject.name.toLowerCase().includes(search.toLowerCase()) ||
-      instructor.subject.stream.toLowerCase().includes(search.toLowerCase())
+      (instructor.subject.stream ?? "shared").toLowerCase().includes(search.toLowerCase())
     );
 
   const handleCreate = async (e: React.FormEvent) => {

@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { z } from "zod";
+import { SubjectType } from "@prisma/client";
 import prisma from "../utils/prisma";
 
 export const getInstructorDashboard = async (req: Request, res: Response): Promise<void> => {
@@ -14,19 +15,23 @@ export const getInstructorDashboard = async (req: Request, res: Response): Promi
       return;
     }
 
+    const isSharedSubject = instructor.subject.type === SubjectType.SHARED;
+    const studentScope = isSharedSubject ? undefined : { stream: instructor.stream };
+    const subjectStreamScope = isSharedSubject ? undefined : { stream: instructor.stream };
+
     const [questionCount, attemptCount] = await Promise.all([
       prisma.question.count({
         where: {
           subjectId: instructor.subjectId,
-          subject: { stream: instructor.stream },
+          subject: subjectStreamScope,
         },
       }),
       prisma.examAttempt.count({
         where: {
           subjectId: instructor.subjectId,
           isCompleted: true,
-          subject: { stream: instructor.stream },
-          student: { stream: instructor.stream },
+          subject: subjectStreamScope,
+          student: studentScope,
         },
       }),
     ]);
@@ -35,8 +40,8 @@ export const getInstructorDashboard = async (req: Request, res: Response): Promi
       where: {
         subjectId: instructor.subjectId,
         isCompleted: true,
-        subject: { stream: instructor.stream },
-        student: { stream: instructor.stream },
+        subject: subjectStreamScope,
+        student: studentScope,
       },
       include: { student: true },
       orderBy: { createdAt: "desc" },
@@ -60,6 +65,7 @@ export const getInstructorQuestions = async (req: Request, res: Response): Promi
   try {
     const instructor = await prisma.instructor.findUnique({
       where: { userId: req.user!.userId },
+      include: { subject: true },
     });
 
     if (!instructor) {
@@ -67,10 +73,11 @@ export const getInstructorQuestions = async (req: Request, res: Response): Promi
       return;
     }
 
+    const isSharedSubject = instructor.subject.type === SubjectType.SHARED;
     const questions = await prisma.question.findMany({
       where: {
         subjectId: instructor.subjectId,
-        subject: { stream: instructor.stream },
+        subject: isSharedSubject ? undefined : { stream: instructor.stream },
       },
       orderBy: [{ year: "desc" }, { createdAt: "desc" }],
     });
@@ -85,6 +92,7 @@ export const getInstructorResults = async (req: Request, res: Response): Promise
   try {
     const instructor = await prisma.instructor.findUnique({
       where: { userId: req.user!.userId },
+      include: { subject: true },
     });
 
     if (!instructor) {
@@ -92,12 +100,13 @@ export const getInstructorResults = async (req: Request, res: Response): Promise
       return;
     }
 
+    const isSharedSubject = instructor.subject.type === SubjectType.SHARED;
     const results = await prisma.examAttempt.findMany({
       where: {
         subjectId: instructor.subjectId,
         isCompleted: true,
-        subject: { stream: instructor.stream },
-        student: { stream: instructor.stream },
+        subject: isSharedSubject ? undefined : { stream: instructor.stream },
+        student: isSharedSubject ? undefined : { stream: instructor.stream },
       },
       include: { student: true },
       orderBy: { createdAt: "desc" },

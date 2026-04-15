@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { z } from "zod";
+import { SubjectType } from "@prisma/client";
 import prisma from "../utils/prisma";
 
 const verifyPasswordSchema = z.object({
@@ -18,6 +19,21 @@ export const verifyExamPassword = async (req: Request, res: Response): Promise<v
 
     if (!student) {
       res.status(404).json({ error: "Student profile not found" });
+      return;
+    }
+
+    const subject = await prisma.subject.findFirst({
+      where: {
+        id: subjectId,
+        OR: [
+          { type: SubjectType.SHARED },
+          { type: SubjectType.STREAM_SPECIFIC, stream: student.stream },
+        ],
+      },
+    });
+
+    if (!subject) {
+      res.status(403).json({ error: "This subject is not available for your stream" });
       return;
     }
 
@@ -170,6 +186,28 @@ export const getExamYears = async (req: Request, res: Response): Promise<void> =
        return;
     }
 
+    const student = await prisma.student.findUnique({ where: { userId: req.user!.userId } });
+    if (!student) {
+      res.status(404).json({ error: "Student not found" });
+      return;
+    }
+
+    const subject = await prisma.subject.findFirst({
+      where: {
+        id: String(subjectId),
+        OR: [
+          { type: SubjectType.SHARED },
+          { type: SubjectType.STREAM_SPECIFIC, stream: student.stream },
+        ],
+      },
+      select: { id: true },
+    });
+
+    if (!subject) {
+      res.status(403).json({ error: "This subject is not available for your stream" });
+      return;
+    }
+
     const rows = await prisma.question.findMany({
       where: { subjectId: String(subjectId) },
       select: { year: true },
@@ -193,7 +231,12 @@ export const getSubjectsByStream = async (req: Request, res: Response): Promise<
     }
 
     const subjects = await prisma.subject.findMany({
-      where: { stream: student.stream },
+      where: {
+        OR: [
+          { type: SubjectType.SHARED },
+          { type: SubjectType.STREAM_SPECIFIC, stream: student.stream },
+        ],
+      },
       orderBy: { name: "asc" },
     });
     res.json(subjects);

@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { verifyToken, JwtPayload } from "../utils/jwt";
 import prisma from "../utils/prisma";
-import { Stream } from "@prisma/client";
+import { Stream, SubjectType } from "@prisma/client";
 
 // Extend Express Request to include user
 declare global {
@@ -11,6 +11,8 @@ declare global {
       subjectId: string;
       stream: Stream;
       subjectName: string;
+      subjectType: SubjectType;
+      subjectStream: Stream | null;
     }
 
     interface Request {
@@ -81,6 +83,8 @@ export const attachInstructorScope = async (req: Request, res: Response, next: N
       subjectId: instructor.subjectId,
       stream: instructor.stream,
       subjectName: instructor.subject.name,
+      subjectType: instructor.subject.type,
+      subjectStream: instructor.subject.stream,
     };
 
     next();

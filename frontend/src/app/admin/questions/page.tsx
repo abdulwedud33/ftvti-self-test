@@ -150,7 +150,12 @@ export default function QuestionsPage() {
   const currentStreamMeta = selectedStream ? STREAMS.find((stream) => stream.value === selectedStream) || null : null;
   const visibleSubjects = selectedStream
     ? SUBJECT_ORDER[selectedStream]
-        .map((name) => subjects.find((subject) => subject.stream === selectedStream && subject.name === name))
+        .map((name) =>
+          subjects.find(
+            (subject) =>
+              subject.name === name && (subject.type === "SHARED" || subject.stream === selectedStream)
+          )
+        )
         .filter(Boolean) as Subject[]
     : [];
 
@@ -357,7 +362,11 @@ export default function QuestionsPage() {
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 flex-wrap">
                       <Badge variant="outline" className="rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest">
-                        {subject.stream === "NATURAL_SCIENCE" ? "Natural" : "Social"}
+                        {subject.type === "SHARED"
+                          ? "Shared"
+                          : subject.stream === "NATURAL_SCIENCE"
+                            ? "Natural"
+                            : "Social"}
                       </Badge>
                     </div>
                     <p className="text-lg font-extrabold leading-tight text-slate-800">{subject.name}</p>
@@ -469,6 +478,7 @@ export default function QuestionsPage() {
 
   const lockedSubject = lockedSubjectId ? subjectMap[lockedSubjectId] || null : null;
   const formStream = form.subjectId ? subjectMap[form.subjectId]?.stream : undefined;
+  const formSubject = form.subjectId ? subjectMap[form.subjectId] : undefined;
 
   return (
     <div className="space-y-8 p-6">
@@ -497,7 +507,15 @@ export default function QuestionsPage() {
                 <div className="space-y-2">
                   <Label className="font-bold">Stream</Label>
                   <Input
-                    value={formStream === "NATURAL_SCIENCE" ? "Natural Science" : formStream === "SOCIAL_SCIENCE" ? "Social Science" : "Select subject first"}
+                    value={
+                      formSubject?.type === "SHARED"
+                        ? "Shared"
+                        : formStream === "NATURAL_SCIENCE"
+                          ? "Natural Science"
+                          : formStream === "SOCIAL_SCIENCE"
+                            ? "Social Science"
+                            : "Select subject first"
+                    }
                     disabled
                     className="rounded-xl bg-muted"
                   />
@@ -515,7 +533,7 @@ export default function QuestionsPage() {
                     <SelectContent className="bg-white dark:bg-zinc-950 border">
                       {subjects.map((subject) => (
                         <SelectItem key={subject.id} value={subject.id}>
-                          {subject.name} ({subject.stream === "NATURAL_SCIENCE" ? "Natural" : "Social"})
+                          {subject.name} ({subject.type === "SHARED" ? "Shared" : subject.stream === "NATURAL_SCIENCE" ? "Natural" : "Social"})
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -544,7 +562,11 @@ export default function QuestionsPage() {
                 <div className="space-y-2">
                   <Label className="font-bold">Quick Info</Label>
                   <Input
-                    value={selectedSubject ? `${selectedSubject.name} · ${selectedSubject.stream === "NATURAL_SCIENCE" ? "Natural Science" : "Social Science"}` : "Choose a subject from the list"}
+                    value={
+                      selectedSubject
+                        ? `${selectedSubject.name} · ${selectedSubject.type === "SHARED" ? "Shared" : selectedSubject.stream === "NATURAL_SCIENCE" ? "Natural Science" : "Social Science"}`
+                        : "Choose a subject from the list"
+                    }
                     disabled
                     className="rounded-xl bg-muted"
                   />
