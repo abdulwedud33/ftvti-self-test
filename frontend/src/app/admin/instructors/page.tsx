@@ -214,7 +214,7 @@ export default function InstructorsPage() {
                     <SelectTrigger className="rounded-xl">
                       <SelectValue placeholder="Select stream" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-white dark:bg-zinc-950 border">
                       <SelectItem value="NATURAL_SCIENCE">Natural Science</SelectItem>
                       <SelectItem value="SOCIAL_SCIENCE">Social Science</SelectItem>
                     </SelectContent>
@@ -230,7 +230,7 @@ export default function InstructorsPage() {
                     <SelectTrigger className="rounded-xl">
                       <SelectValue placeholder="Select subject" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-white dark:bg-zinc-950 border">
                       {filteredSubjects.map((subject) => (
                         <SelectItem key={subject.id} value={subject.id}>{subject.name}</SelectItem>
                       ))}
