@@ -10,7 +10,13 @@ import { Role, Stream, Gender, SubjectType } from "@prisma/client";
 const createStudentSchema = z.object({
   username: z.string().min(3),
   password: z.string().min(6),
-  fullName: z.string().min(2),
+  fullName: z
+    .string()
+    .trim()
+    .min(2)
+    .refine((value) => value.split(/\s+/).length >= 2, {
+      message: "Please enter at least name and father name",
+    }),
   studentId: z.string().min(3),
   gender: z.nativeEnum(Gender),
   stream: z.nativeEnum(Stream),
@@ -83,7 +89,7 @@ export const createStudent = async (req: Request, res: Response): Promise<void> 
       const student = await tx.student.create({
         data: {
           userId: user.id,
-          fullName: data.fullName,
+          fullName: data.fullName.replace(/\s+/g, " ").trim(),
           studentId: data.studentId,
           gender: data.gender,
           stream: data.stream,

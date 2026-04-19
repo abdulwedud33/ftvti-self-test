@@ -75,7 +75,15 @@ export default function StudentsPage() {
     setSubmitting(true);
     try {
       if (!form.gender) throw new Error("Please select gender");
-      await adminApi.createStudent(form);
+      const normalizedFullName = form.fullName.replace(/\s+/g, " ").trim();
+      if (normalizedFullName.split(" ").length < 2) {
+        throw new Error("Enter at least name and father name");
+      }
+
+      await adminApi.createStudent({
+        ...form,
+        fullName: normalizedFullName,
+      });
       toast({ title: "Success", description: "Student created successfully" });
       setOpen(false);
       setForm({ username: "", password: "", fullName: "", studentId: "", gender: "MALE" as Gender, stream: activeStream });
@@ -210,7 +218,7 @@ export default function StudentsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Full Name</Label>
-                  <Input value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} placeholder="John Doe" required />
+                  <Input value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} placeholder="John Abebe" required />
                 </div>
                 <div className="space-y-2">
                   <Label>Student ID</Label>

@@ -62,7 +62,7 @@ export default function EventsPage() {
   const past = events.filter((e) => !dayjs(e.date).isAfter(dayjs()));
 
   return (
-    <div className="space-y-6 ml-6">
+    <div className="space-y-6 ml-6 mt-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
@@ -73,7 +73,7 @@ export default function EventsPage() {
 
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button className="gap-2"><Plus className="w-4 h-4" /> Add Event</Button>
+            <Button className="gap-2 mr-6"><Plus className="w-4 h-4" /> Add Event</Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-md">
             <DialogHeader><DialogTitle>Create New Event</DialogTitle></DialogHeader>

@@ -32,7 +32,7 @@ export default function CommentsPage() {
   };
 
   return (
-    <div className="space-y-6 ml-6">
+    <div className="space-y-6 ml-6 mt-5">
       <div>
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <MessageSquare className="w-6 h-6" /> Student Feedback
