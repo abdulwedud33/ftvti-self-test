@@ -62,7 +62,7 @@ export default function EventsPage() {
   const past = events.filter((e) => !dayjs(e.date).isAfter(dayjs()));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 ml-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
