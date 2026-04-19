@@ -56,7 +56,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
             <GraduationCap className="w-6 h-6" />
           </div>
           <div>
-            <p className="font-extrabold text-sm leading-none tracking-tight">FTVTI Student</p>
+            <p className="font-extrabold text-sm leading-none tracking-tight">Grade 12 Student</p>
             <p className="text-[10px] uppercase font-bold text-muted-foreground mt-1 tracking-widest text-indigo-600">Portal</p>
           </div>
         </div>
@@ -101,7 +101,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
           <button onClick={() => setSidebarOpen(true)}>
             <Menu className="w-5 h-5" />
           </button>
-          <span className="font-bold text-sm tracking-tight">FTVTI Student Portal</span>
+          <span className="font-bold text-sm tracking-tight">Grade 12 Entrance Exam - Student Portal</span>
         </header>
 
         <main className="flex-1 p-4 lg:p-10 overflow-auto scroll-smooth">

@@ -7,8 +7,8 @@ import { AuthProvider } from "@/hooks/use-auth";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "FTVTI Exit Exam System",
-  description: "Federal Technical and Vocational Training Institute – Self-Test Exit Examination System",
+  title: "Grade 12 Entrance Exam Self-Test System",
+  description: "Prepare for your Grade 12 entrance exam with our comprehensive self-test system",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -30,50 +30,52 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-950 via-blue-900 to-indigo-900 flex items-center justify-center p-4">
-      {/* Background pattern */}
-      <div className="absolute inset-0 opacity-10" style={{
-        backgroundImage: `radial-gradient(circle at 1px 1px, white 1px, transparent 0)`,
-        backgroundSize: "40px 40px"
-      }} />
+    <div className="min-h-screen flex items-center justify-center p-4" style={{
+      backgroundImage: 'url("https://images.unsplash.com/photo-1427504494785-405a6e1b5434?auto=format&fit=crop&w=1920&q=80")',
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      backgroundAttachment: 'fixed'
+    }}>
+      {/* Dark overlay for readability */}
+      <div className="absolute inset-0 bg-black/40" />
 
       <div className="relative w-full max-w-md">
         {/* Header branding */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-white/10 backdrop-blur border border-white/20 mb-4">
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-white/20 backdrop-blur-md border border-white/30 mb-4">
             <GraduationCap className="w-10 h-10 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">FTVTI</h1>
-          <p className="text-blue-200 text-sm mt-1">Self-Test Exit Examination System</p>
-          <p className="text-blue-300/60 text-xs mt-1">Federal Technical and Vocational Training Institute</p>
+          <h1 className="text-3xl font-bold text-white tracking-tight">Grade 12 Entrance Exam</h1>
+          <p className="text-white/90 text-sm mt-1">Self-Test System</p>
+          <p className="text-white/60 text-xs mt-2">Prepare for Your Future</p>
         </div>
 
-        <Card className="border-0 shadow-2xl bg-white/95 backdrop-blur">
+        <Card className="border border-white/20 shadow-2xl bg-white/10 backdrop-blur-md">
           <CardHeader className="space-y-1 pb-4">
-            <CardTitle className="text-xl text-center">Sign In</CardTitle>
-            <CardDescription className="text-center">
+            <CardTitle className="text-xl text-center text-white">Sign In</CardTitle>
+            <CardDescription className="text-center text-white/80">
               Enter your credentials to access your account
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
-                <div className="flex items-center gap-2 p-3 rounded-lg bg-red-50 text-red-700 text-sm border border-red-200">
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-red-500/20 text-red-100 text-sm border border-red-400/30">
                   <AlertCircle className="w-4 h-4 flex-shrink-0" />
                   {error}
                 </div>
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="username">Username</Label>
+                <Label htmlFor="username" className="text-white">Username</Label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50" />
                   <Input
                     id="username"
                     placeholder="Enter your username"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    className="pl-9"
+                    className="pl-9 bg-white/20 border-white/30 text-white placeholder:text-white/50"
                     required
                     autoComplete="username"
                   />
@@ -81,16 +83,16 @@ export default function LoginPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password" className="text-white">Password</Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50" />
                   <Input
                     id="password"
                     type="password"
                     placeholder="Enter your password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="pl-9"
+                    className="pl-9 bg-white/20 border-white/30 text-white placeholder:text-white/50"
                     required
                     autoComplete="current-password"
                   />
@@ -110,8 +112,8 @@ export default function LoginPage() {
           </CardContent>
         </Card>
 
-        <p className="text-center text-blue-300/50 text-xs mt-6">
-          © {new Date().getFullYear()} FTVTI — All rights reserved
+        <p className="text-center text-white/50 text-xs mt-6">
+          © {new Date().getFullYear()} Grade 12 Entrance Exam Self-Test System — All rights reserved
         </p>
       </div>
     </div>

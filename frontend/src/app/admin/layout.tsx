@@ -70,8 +70,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <GraduationCap className="w-6 h-6 text-white" />
           </div>
           <div>
-            <p className="font-extrabold text-sm leading-none tracking-tight">FTVTI Admin</p>
-            <p className="text-[10px] uppercase font-bold text-muted-foreground mt-1 tracking-widest">Self-Test System</p>
+            <p className="font-extrabold text-sm leading-none tracking-tight">Grade 12 Admin</p>
+            <p className="text-[10px] uppercase font-bold text-muted-foreground mt-1 tracking-widest">Entrance Exam System</p>
           </div>
           <button className="ml-auto lg:hidden" onClick={() => setSidebarOpen(false)}>
             <X className="w-4 h-4" />
@@ -127,7 +127,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <button onClick={() => setSidebarOpen(true)}>
             <Menu className="w-5 h-5" />
           </button>
-          <span className="font-bold text-sm tracking-tight">FTVTI Admin Panel</span>
+          <span className="font-bold text-sm tracking-tight">Grade 12 Entrance Exam System - Admin</span>
         </header>
 
         <main className="flex-1 overflow-auto bg-slate-50/50">

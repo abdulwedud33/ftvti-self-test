@@ -1,4 +1,4 @@
-// FTVTI Self-Test Exit Examination System - Prisma Schema
+// Grade 12 Entrance Exam Self-Test System - Prisma Schema
 generator client {
   provider = "prisma-client-js"
 }

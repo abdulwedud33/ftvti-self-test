@@ -52,7 +52,7 @@ export async function generatePremiumResultsPDFBlob(
       <!-- Header -->
       <div style="text-align: center; margin-bottom: 30px; border-bottom: 3px solid #10b981; padding-bottom: 20px;">
         <h1 style="margin: 0; color: #10b981; font-size: 28px; font-weight: bold;">
-          FTVTI Self-Test Exit Examination System
+          Grade 12 Entrance Exam Self-Test System
         </h1>
         <p style="margin: 5px 0 0 0; color: #666; font-size: 12px;">
           Premium Results Report
@@ -163,13 +163,13 @@ export async function generatePremiumResultsPDFBlob(
       <!-- Footer -->
       <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center; color: #999; font-size: 11px;">
         <p style="margin: 5px 0;">
-          This report is generated from FTVTI Self-Test Exit Examination System
+          This report is generated from Grade 12 Entrance Exam Self-Test System
         </p>
         <p style="margin: 5px 0;">
           For Self-Practice Purpose Only • Generated on ${reportDate}
         </p>
         <p style="margin: 5px 0; color: #bbb;">
-          © FTVTI System
+          © Grade 12 Entrance Exam System
         </p>
       </div>
     </div>

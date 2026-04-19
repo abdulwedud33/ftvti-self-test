@@ -57,7 +57,7 @@ export default function InstructorLayout({ children }: { children: React.ReactNo
             <GraduationCap className="w-6 h-6" />
           </div>
           <div>
-            <p className="font-extrabold text-sm leading-none tracking-tight">FTVTI Instructor</p>
+            <p className="font-extrabold text-sm leading-none tracking-tight">Grade 12 Instructor</p>
             <p className="text-[10px] uppercase font-bold mt-1 tracking-widest text-primary">Portal</p>
           </div>
         </div>

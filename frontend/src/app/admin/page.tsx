@@ -51,7 +51,7 @@ export default function AdminDashboard() {
           </p>
         </div>
         <Badge variant="outline" className="h-8 px-4 rounded-full bg-white shadow-sm border-slate-100 font-bold text-slate-600">
-           FTVTI-SYSTEM-V2.1.0
+           GRADE12-SYSTEM-V2.1.0
         </Badge>
       </div>
 

@@ -1,7 +1,7 @@
 {
   "name": "ftvti-backend",
   "version": "1.0.0",
-  "description": "FTVTI Self-Test Exit Examination System - Backend",
+  "description": "Grade 12 Entrance Exam Self-Test System - Backend",
   "main": "dist/index.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",

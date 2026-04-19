@@ -31,7 +31,7 @@ app.use("/api/instructor", instructorRoutes);
 
 // Health check
 app.get("/api/health", (_req, res) => {
-  res.json({ status: "ok", message: "FTVTI API is running" });
+  res.json({ status: "ok", message: "Grade 12 Entrance Exam API is running" });
 });
 
 // Global error handler
@@ -41,7 +41,7 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 FTVTI Backend running on port ${PORT}`);
+  console.log(`🚀 Grade 12 Entrance Exam Backend running on port ${PORT}`);
 });
 
 export default app;

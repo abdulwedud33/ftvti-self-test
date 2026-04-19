@@ -100,7 +100,7 @@ export default function MyResultsPage() {
     if (!pdfBlob || !user?.student) return;
 
     const date = new Date().toISOString().split("T")[0];
-    const filename = `FTVTI_Results_${user.student.studentId}_${date}.pdf`;
+    const filename = `Grade12EntranceExam_Results_${user.student.studentId}_${date}.pdf`;
     
     downloadPDFBlob(pdfBlob, filename);
     

@@ -1,6 +1,6 @@
-# FTVTI Self-Test Exit Examination System
+# Grade 12 Entrance Exam Self-Test System
 
-A full-stack web application for the **Federal Technical and Vocational Training Institute (FTVTI)** that allows graduate students to practice multiple-choice exit examinations online before the official Ministry of Education (MoE) exit exam.
+A full-stack web application that allows students to practice multiple-choice entrance examination questions online in preparation for the Grade 12 entrance exam.
 
 ---
 
@@ -256,4 +256,4 @@ INSERT INTO "Department" (id, name) VALUES (gen_random_uuid(), 'Your Department 
 
 ## 📝 License
 
-This project was developed as a thesis project for FTVTI. All rights reserved.
+This project is developed for Grade 12 Entrance Exam preparation. All rights reserved.
