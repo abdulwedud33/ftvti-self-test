@@ -290,7 +290,7 @@ export default function InstructorsPage() {
                       {stream.description}
                     </p>
                   </div>
-                  <Badge variant="secondary" className="rounded-full px-3 py-1.5 text-xs font-bold">
+                  <Badge variant="secondary" className="rounded-md px-3 py-1.5 text-xs font-bold">
                     {tabCounts[stream.value]} instructors
                   </Badge>
                 </div>
