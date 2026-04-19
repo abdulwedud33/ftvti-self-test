@@ -83,7 +83,7 @@ export default function SubjectsPage() {
           <h1 className="text-3xl font-extrabold flex items-center gap-2 tracking-tight">
             <Bookmark className="w-8 h-8 text-primary" /> Subjects
           </h1>
-          <p className="text-muted-foreground text-sm">Manage curriculum subjects for each stream</p>
+          <p className="text-muted-foreground text-sm mt-2">Manage curriculum subjects for each stream</p>
         </div>
 
         <Dialog open={open} onOpenChange={setOpen}>

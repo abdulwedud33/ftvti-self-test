@@ -25,7 +25,7 @@ export default function InstructorDashboard() {
     <div className="space-y-8">
       <div className="flex flex-col gap-1">
         <h1 className="text-3xl font-extrabold tracking-tight">Welcome, {instructor.user?.username}</h1>
-        <p className="text-muted-foreground font-medium flex items-center gap-2">
+        <p className="text-muted-foreground font-medium flex items-center gap-2 mt-2">
           Management portal for <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 text-xs font-bold">{instructor.subject.name}</Badge>
         </p>
       </div>

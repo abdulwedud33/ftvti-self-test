@@ -487,7 +487,7 @@ export default function QuestionsPage() {
           <h1 className="text-3xl font-extrabold tracking-tight flex items-center gap-3">
             <BookMarked className="w-8 h-8 text-primary" /> Categorized Questions
           </h1>
-          <p className="text-muted-foreground font-medium">Browse by stream, then subject, then questions.</p>
+          <p className="text-muted-foreground font-medium mt-2">Browse by stream, then subject, then questions.</p>
         </div>
 
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

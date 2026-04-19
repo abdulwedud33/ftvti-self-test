@@ -92,7 +92,7 @@ export default function InstructorQuestionsPage() {
           <h1 className="text-3xl font-extrabold tracking-tight flex items-center gap-3">
             <BookOpen className="w-8 h-8 text-primary" /> My Questions
           </h1>
-          <p className="text-muted-foreground font-medium">
+          <p className="text-muted-foreground font-medium mt-2">
             Managing questions for <span className="text-primary font-bold">{instructorData?.instructor.subject.name}</span>
             {" "}(
             {instructorData?.instructor.stream === "NATURAL_SCIENCE" ? "Natural Science" : "Social Science"}

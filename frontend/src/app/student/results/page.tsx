@@ -141,13 +141,13 @@ export default function MyResultsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 ml-4">
       <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Trophy className="w-6 h-6" /> My Results
           </h1>
-          <p className="text-muted-foreground text-sm">{results.length} exam attempt(s) recorded</p>
+          <p className="text-muted-foreground text-sm mt-2">{results.length} exam attempt(s) recorded</p>
         </div>
 
           {/* Download Report Button - Prominent placement with premium styling */}

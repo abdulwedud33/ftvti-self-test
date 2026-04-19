@@ -31,7 +31,7 @@ export default function ResultsPage() {
         <h1 className="text-3xl font-extrabold tracking-tight flex items-center gap-3">
           <BarChart2 className="w-8 h-8 text-primary" /> Examination Analytics
         </h1>
-        <p className="text-muted-foreground font-medium">Cross-stream student performance reporting</p>
+        <p className="text-muted-foreground font-medium mt-2">Cross-stream student performance reporting</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

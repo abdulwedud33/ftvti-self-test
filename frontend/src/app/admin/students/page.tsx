@@ -191,7 +191,7 @@ export default function StudentsPage() {
           <h1 className="text-3xl font-extrabold flex items-center gap-2 tracking-tight">
             <Users className="w-8 h-8 text-primary" /> Students
           </h1>
-          <p className="text-muted-foreground text-sm">
+          <p className="text-muted-foreground text-sm mt-2">
             {tabCounts.NATURAL_SCIENCE + tabCounts.SOCIAL_SCIENCE} registered students across all streams
           </p>
         </div>

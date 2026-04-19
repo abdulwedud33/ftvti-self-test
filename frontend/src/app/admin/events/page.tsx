@@ -68,7 +68,7 @@ export default function EventsPage() {
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Calendar className="w-6 h-6" /> Events
           </h1>
-          <p className="text-muted-foreground text-sm">{events.length} total events</p>
+          <p className="text-muted-foreground text-sm mt-2">{events.length} total events</p>
         </div>
 
         <Dialog open={open} onOpenChange={setOpen}>

@@ -44,7 +44,7 @@ export default function InstructorResultsPage() {
           <h1 className="text-3xl font-extrabold tracking-tight flex items-center gap-3 text-slate-900">
             <BarChart2 className="w-8 h-8 text-primary" /> Performance Analysis
           </h1>
-          <p className="text-muted-foreground font-medium flex items-center gap-2">
+          <p className="text-muted-foreground font-medium flex items-center gap-2 mt-2">
             Detailed tracking for <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-bold">{instructorData?.instructor.subject.name}</Badge>
           </p>
         </div>

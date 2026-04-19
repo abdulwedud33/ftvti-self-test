@@ -183,7 +183,7 @@ export default function InstructorsPage() {
           <h1 className="text-3xl font-extrabold flex items-center gap-2 tracking-tight">
             <UserCheck className="w-8 h-8 text-primary" /> Instructors
           </h1>
-          <p className="text-muted-foreground text-sm">
+          <p className="text-muted-foreground text-sm mt-2">
             {tabCounts.NATURAL_SCIENCE + tabCounts.SOCIAL_SCIENCE} instructors across both streams
           </p>
         </div>

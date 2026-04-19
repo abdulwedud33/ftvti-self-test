@@ -39,12 +39,12 @@ export default function StudentEventsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 ml-4">
       <div>
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <Calendar className="w-6 h-6" /> Events & Announcements
         </h1>
-        <p className="text-muted-foreground text-sm">
+        <p className="text-muted-foreground text-sm mt-2">
           {upcoming.length} upcoming · {past.length} past
         </p>
       </div>

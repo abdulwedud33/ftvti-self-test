@@ -37,7 +37,7 @@ export default function CommentsPage() {
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <MessageSquare className="w-6 h-6" /> Student Feedback
         </h1>
-        <p className="text-muted-foreground text-sm">{comments.length} feedback submissions</p>
+        <p className="text-muted-foreground text-sm mt-2">{comments.length} feedback submissions</p>
       </div>
 
       {loading ? (
