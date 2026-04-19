@@ -57,6 +57,7 @@ export default function StudentDashboard() {
         <div className="absolute -right-8 -top-8 w-40 h-40 rounded-full bg-white/10" />
         <div className="absolute -right-4 top-16 w-24 h-24 rounded-full bg-white/5" />
 
+        <div className="relative">
           <div className="flex items-center gap-2 text-indigo-200 text-sm mb-2">
             <GraduationCap className="w-4 h-4" />
             <span>Grade 12 Entrance Exam Self-Test System</span>
