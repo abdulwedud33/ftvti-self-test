@@ -30,14 +30,16 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{
-      backgroundImage: 'url("https://images.unsplash.com/photo-1427504494785-405a6e1b5434?auto=format&fit=crop&w=1920&q=80")',
-      backgroundSize: 'cover',
-      backgroundPosition: 'center',
-      backgroundAttachment: 'fixed'
-    }}>
-      {/* Dark overlay for readability */}
-      <div className="absolute inset-0 bg-black/40" />
+    <div
+      className="relative min-h-screen flex items-center justify-center p-4"
+      style={{
+        backgroundImage:
+          'linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.45)), url("/images/pexels-airlangga-35865722.jpg")',
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+      }}
+    >
 
       <div className="relative w-full max-w-md">
         {/* Header branding */}
