@@ -100,7 +100,9 @@ export default function MyResultsPage() {
     if (!pdfBlob || !user?.student) return;
 
     const date = new Date().toISOString().split("T")[0];
-    const filename = `Grade12EntranceExam_Results_${user.student.studentId}_${date}.pdf`;
+    const firstName = user.student.fullName.trim().split(/\s+/)[0] || "Student";
+    const safeFirstName = firstName.replace(/[^a-zA-Z0-9_-]/g, "");
+    const filename = `${safeFirstName}_Grade12EntranceExam_Results_${date}.pdf`;
     
     downloadPDFBlob(pdfBlob, filename);
     
